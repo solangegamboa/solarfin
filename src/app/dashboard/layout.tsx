@@ -27,6 +27,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { TransactionsProvider } from '@/contexts/transactions-context';
 import { CreditCardsProvider } from '@/contexts/credit-cards-context';
+import { LoansProvider } from '@/contexts/loans-context';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
@@ -54,54 +55,56 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <TransactionsProvider>
       <CreditCardsProvider>
-        <TooltipProvider>
-          <div className="flex min-h-screen w-full bg-muted/40">
-            <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
-              <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
-                <Link
-                  href="/dashboard"
-                  className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
-                >
-                  <Sun className="h-4 w-4 transition-all group-hover:scale-110" />
-                  <span className="sr-only">SolarFin</span>
-                </Link>
-                <NavItem icon={LayoutDashboard} href="/dashboard" label="Painel" />
-                <NavItem icon={ArrowLeftRight} href="/dashboard/expenses" label="Transações" />
-                <NavItem icon={CreditCard} href="/dashboard/credit-cards" label="Cartões de Crédito" />
-                <NavItem icon={Landmark} href="/dashboard/loans" label="Empréstimos" />
-                <NavItem icon={Repeat} href="/dashboard/recurring" label="Recorrentes" />
-                <NavItem icon={Sparkles} href="/dashboard/savings-ai" label="Economia com IA" />
-              </nav>
-              <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback>{getInitials(user.email || 'U')}</AvatarFallback>
-                      </Avatar>
-                      <span className="sr-only">Usuário</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{user.email}</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={logout} className="h-9 w-9 rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8">
-                      <LogOut className="h-5 w-5" />
-                      <span className="sr-only">Sair</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Sair</TooltipContent>
-                </Tooltip>
-              </nav>
-            </aside>
-            <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14 w-full">
-                <main className="flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-                  {children}
-                </main>
+        <LoansProvider>
+          <TooltipProvider>
+            <div className="flex min-h-screen w-full bg-muted/40">
+              <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
+                <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
+                  <Link
+                    href="/dashboard"
+                    className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
+                  >
+                    <Sun className="h-4 w-4 transition-all group-hover:scale-110" />
+                    <span className="sr-only">SolarFin</span>
+                  </Link>
+                  <NavItem icon={LayoutDashboard} href="/dashboard" label="Painel" />
+                  <NavItem icon={ArrowLeftRight} href="/dashboard/expenses" label="Transações" />
+                  <NavItem icon={CreditCard} href="/dashboard/credit-cards" label="Cartões de Crédito" />
+                  <NavItem icon={Landmark} href="/dashboard/loans" label="Empréstimos" />
+                  <NavItem icon={Repeat} href="/dashboard/recurring" label="Recorrentes" />
+                  <NavItem icon={Sparkles} href="/dashboard/savings-ai" label="Economia com IA" />
+                </nav>
+                <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback>{getInitials(user.email || 'U')}</AvatarFallback>
+                        </Avatar>
+                        <span className="sr-only">Usuário</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{user.email}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={logout} className="h-9 w-9 rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8">
+                        <LogOut className="h-5 w-5" />
+                        <span className="sr-only">Sair</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Sair</TooltipContent>
+                  </Tooltip>
+                </nav>
+              </aside>
+              <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14 w-full">
+                  <main className="flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+                    {children}
+                  </main>
+              </div>
             </div>
-          </div>
-        </TooltipProvider>
+          </TooltipProvider>
+        </LoansProvider>
       </CreditCardsProvider>
     </TransactionsProvider>
   );
