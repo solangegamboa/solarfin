@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
+import { CalendarIcon, PlusCircle, Trash2, Upload } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useTransactions } from "@/contexts/transactions-context";
 import type { Transaction } from "@/contexts/transactions-context";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { readReceipt } from "@/ai/flows/read-receipt-flow";
 
 const transactionSchema = z.object({
   description: z.string().min(2, { message: "A descrição deve ter pelo menos 2 caracteres." }),
@@ -80,6 +82,8 @@ export default function TransactionsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [activeTab, setActiveTab] = useState("manual");
   const { transactions, addTransaction, deleteTransaction, loading } = useTransactions();
   const { toast } = useToast();
 
@@ -102,7 +106,14 @@ export default function TransactionsPage() {
         title: "Transação Adicionada",
         description: `Sua transação "${data.description}" foi salva.`,
       });
-      form.reset();
+      form.reset({
+        description: "",
+        amount: 0,
+        date: new Date(),
+        category: "",
+        type: "saida",
+      });
+      setActiveTab("manual");
       setOpen(false);
     } catch (error) {
        toast({
@@ -136,6 +147,48 @@ export default function TransactionsPage() {
     }
   };
 
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsAnalyzing(true);
+    try {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            const dataUri = reader.result as string;
+            const result = await readReceipt({ photoDataUri: dataUri });
+            
+            if (result && result.amount) {
+                form.setValue("amount", result.amount);
+                toast({
+                    title: "Valor Extraído com Sucesso",
+                    description: `O valor de ${result.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} foi preenchido.`,
+                });
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Falha ao Ler o Cupom",
+                    description: "Não foi possível identificar o valor total no cupom. Por favor, preencha manualmente.",
+                });
+            }
+            form.setValue("type", "saida");
+            setActiveTab("manual");
+            setIsAnalyzing(false);
+        };
+        reader.readAsDataURL(file);
+    } catch (error) {
+        console.error("Error reading receipt:", error);
+        toast({
+            variant: "destructive",
+            title: "Erro na Análise",
+            description: "Ocorreu um erro ao processar a imagem.",
+        });
+        setIsAnalyzing(false);
+    }
+    if (event.target) {
+        event.target.value = '';
+    }
+  };
 
   return (
     <>
@@ -147,7 +200,19 @@ export default function TransactionsPage() {
                 Gerencie suas transações de entrada e saída.
                 </CardDescription>
             </div>
-            <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog open={open} onOpenChange={(isOpen) => {
+                setOpen(isOpen);
+                if (!isOpen) {
+                    form.reset({
+                        description: "",
+                        amount: 0,
+                        date: new Date(),
+                        category: "",
+                        type: "saida",
+                    });
+                    setActiveTab("manual");
+                }
+            }}>
                 <DialogTrigger asChild>
                     <Button size="sm" className="gap-1">
                         <PlusCircle className="h-4 w-4" />
@@ -158,131 +223,152 @@ export default function TransactionsPage() {
                     <DialogHeader>
                     <DialogTitle>Adicionar Nova Transação</DialogTitle>
                     <DialogDescription>
-                        Preencha os detalhes da sua nova transação aqui.
+                        Preencha os detalhes manualmente ou envie um cupom fiscal.
                     </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                            <FormField
-                            control={form.control}
-                            name="type"
-                            render={({ field }) => (
-                                <FormItem className="space-y-3">
-                                <FormLabel>Tipo de Transação</FormLabel>
-                                <FormControl>
-                                    <RadioGroup
-                                    onValueChange={field.onChange}
-                                    defaultValue={field.value}
-                                    className="flex space-x-4"
-                                    >
-                                    <FormItem className="flex items-center space-x-2 space-y-0">
+                            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="manual">Manual</TabsTrigger>
+                                    <TabsTrigger value="receipt">Cupom Fiscal</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="manual" className="space-y-4 pt-4">
+                                    <FormField
+                                    control={form.control}
+                                    name="type"
+                                    render={({ field }) => (
+                                        <FormItem className="space-y-3">
+                                        <FormLabel>Tipo de Transação</FormLabel>
                                         <FormControl>
-                                        <RadioGroupItem value="entrada" />
-                                        </FormControl>
-                                        <FormLabel className="font-normal">Entrada</FormLabel>
-                                    </FormItem>
-                                    <FormItem className="flex items-center space-x-2 space-y-0">
-                                        <FormControl>
-                                        <RadioGroupItem value="saida" />
-                                        </FormControl>
-                                        <FormLabel className="font-normal">Saída</FormLabel>
-                                    </FormItem>
-                                    </RadioGroup>
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-
-                            <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Descrição</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Ex: Salário, Aluguel" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-
-                            <FormField
-                            control={form.control}
-                            name="amount"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Valor</FormLabel>
-                                <FormControl>
-                                    <Input type="number" placeholder="0.00" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-
-                            <FormField
-                            control={form.control}
-                            name="category"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Categoria</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Ex: Renda, Moradia" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-                            
-                            <FormField
-                                control={form.control}
-                                name="date"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-col">
-                                    <FormLabel>Data da Transação</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                            variant={"outline"}
-                                            className={cn(
-                                                "w-full pl-3 text-left font-normal",
-                                                !field.value && "text-muted-foreground"
-                                            )}
+                                            <RadioGroup
+                                            onValueChange={field.onChange}
+                                            value={field.value}
+                                            className="flex space-x-4"
                                             >
-                                            {field.value ? (
-                                                format(field.value, "PPP", { locale: ptBR })
-                                            ) : (
-                                                <span>Escolha uma data</span>
-                                            )}
-                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
+                                            <FormItem className="flex items-center space-x-2 space-y-0">
+                                                <FormControl>
+                                                <RadioGroupItem value="entrada" />
+                                                </FormControl>
+                                                <FormLabel className="font-normal">Entrada</FormLabel>
+                                            </FormItem>
+                                            <FormItem className="flex items-center space-x-2 space-y-0">
+                                                <FormControl>
+                                                <RadioGroupItem value="saida" />
+                                                </FormControl>
+                                                <FormLabel className="font-normal">Saída</FormLabel>
+                                            </FormItem>
+                                            </RadioGroup>
                                         </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                            mode="single"
-                                            selected={field.value}
-                                            onSelect={field.onChange}
-                                            disabled={(date) =>
-                                                date > new Date() || date < new Date("1900-01-01")
-                                            }
-                                            initialFocus
-                                            locale={ptBR}
-                                        />
-                                        </PopoverContent>
-                                    </Popover>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                                />
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
 
+                                    <FormField
+                                    control={form.control}
+                                    name="description"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Descrição</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Ex: Salário, Aluguel" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
+
+                                    <FormField
+                                    control={form.control}
+                                    name="amount"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Valor</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" placeholder="0.00" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
+
+                                    <FormField
+                                    control={form.control}
+                                    name="category"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Categoria</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Ex: Renda, Moradia" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
+                                    
+                                    <FormField
+                                        control={form.control}
+                                        name="date"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col">
+                                            <FormLabel>Data da Transação</FormLabel>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                    variant={"outline"}
+                                                    className={cn(
+                                                        "w-full pl-3 text-left font-normal",
+                                                        !field.value && "text-muted-foreground"
+                                                    )}
+                                                    >
+                                                    {field.value ? (
+                                                        format(field.value, "PPP", { locale: ptBR })
+                                                    ) : (
+                                                        <span>Escolha uma data</span>
+                                                    )}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                    </Button>
+                                                </FormControl>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value}
+                                                    onSelect={field.onChange}
+                                                    disabled={(date) =>
+                                                        date > new Date() || date < new Date("1900-01-01")
+                                                    }
+                                                    initialFocus
+                                                    locale={ptBR}
+                                                />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                        />
+                                </TabsContent>
+                                <TabsContent value="receipt">
+                                    <div className="flex flex-col items-center justify-center space-y-4 pt-8 pb-4">
+                                        <Upload className="h-12 w-12 text-muted-foreground" />
+                                        <p className="text-center text-sm text-muted-foreground">
+                                            Envie uma imagem do seu cupom fiscal e nós preencheremos o valor para você.
+                                        </p>
+                                        <Button asChild disabled={isAnalyzing} className="cursor-pointer">
+                                            <label htmlFor="receipt-upload">
+                                                {isAnalyzing ? "Analisando..." : "Enviar Imagem"}
+                                            </label>
+                                        </Button>
+                                        <Input id="receipt-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} disabled={isAnalyzing} />
+                                    </div>
+                                </TabsContent>
+                            </Tabs>
                             <DialogFooter>
-                            <Button type="submit" disabled={isSaving}>
-                                {isSaving ? "Salvando..." : "Salvar Transação"}
-                            </Button>
+                                <Button type="submit" disabled={isSaving || isAnalyzing}>
+                                    {isSaving ? "Salvando..." : "Salvar Transação"}
+                                </Button>
                             </DialogFooter>
                         </form>
                     </Form>
