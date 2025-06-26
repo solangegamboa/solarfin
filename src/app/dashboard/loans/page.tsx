@@ -4,11 +4,11 @@ export default function LoansPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Loan Management</CardTitle>
-        <CardDescription>Input and manage loan details, track payment schedules, and monitor outstanding balances.</CardDescription>
+        <CardTitle>Gerenciamento de Empréstimos</CardTitle>
+        <CardDescription>Insira e gerencie detalhes de empréstimos, acompanhe cronogramas de pagamento e monitore saldos devedores.</CardDescription>
       </CardHeader>
       <CardContent>
-        <p>Here you can input details for any loans you have, such as mortgages, car loans, or personal loans. The system will help you track payment schedules and remaining balances.</p>
+        <p>Aqui você pode inserir detalhes de quaisquer empréstimos que possua, como hipotecas, financiamentos de veículos ou empréstimos pessoais. O sistema o ajudará a acompanhar os cronogramas de pagamento e os saldos remanescentes.</p>
       </CardContent>
     </Card>
   );

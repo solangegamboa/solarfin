@@ -32,12 +32,12 @@ import { useToast } from '@/hooks/use-toast';
 
 const signupSchema = z
   .object({
-    email: z.string().email({ message: 'Invalid email address.' }),
-    password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+    email: z.string().email({ message: 'Endereço de e-mail inválido.' }),
+    password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match.",
+    message: "As senhas não coincidem.",
     path: ['confirmPassword'],
   });
 
@@ -62,15 +62,15 @@ export default function SignupPage() {
     try {
       await createUserWithEmailAndPassword(auth, data.email, data.password);
       toast({
-        title: 'Account Created',
-        description: 'Welcome to SolarFin! Redirecting you to the dashboard.',
+        title: 'Conta Criada',
+        description: 'Bem-vindo à SolarFin! Redirecionando para o painel.',
       });
       router.push('/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Signup Failed',
-        description: error.message || 'An unknown error occurred.',
+        title: 'Falha no Cadastro',
+        description: error.message || 'Ocorreu um erro desconhecido.',
       });
     } finally {
       setIsLoading(false);
@@ -84,8 +84,8 @@ export default function SignupPage() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Sun className="h-8 w-8" />
           </div>
-          <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
-          <CardDescription>Join SolarFin and take control of your finances</CardDescription>
+          <CardTitle className="text-2xl font-headline">Crie uma Conta</CardTitle>
+          <CardDescription>Junte-se à SolarFin e assuma o controle de suas finanças</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -95,9 +95,9 @@ export default function SignupPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>E-mail</FormLabel>
                     <FormControl>
-                      <Input placeholder="name@example.com" {...field} />
+                      <Input placeholder="nome@exemplo.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -108,7 +108,7 @@ export default function SignupPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Senha</FormLabel>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
@@ -121,7 +121,7 @@ export default function SignupPage() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
+                    <FormLabel>Confirmar Senha</FormLabel>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
@@ -130,16 +130,16 @@ export default function SignupPage() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Creating Account...' : 'Sign Up'}
+                {isLoading ? 'Criando Conta...' : 'Cadastrar'}
               </Button>
             </form>
           </Form>
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
-            Already have an account?{' '}
+            Já tem uma conta?{' '}
             <Link href="/login" className="font-medium text-primary hover:underline">
-              Sign in
+              Entrar
             </Link>
           </p>
         </CardFooter>

@@ -26,43 +26,43 @@ import Link from "next/link";
 
 
 const transactions = [
-    { type: 'Groceries', category: 'Food', amount: -75.42, date: '2024-05-20' },
-    { type: 'Salary', category: 'Income', amount: 3000.00, date: '2024-05-20' },
-    { type: 'Netflix', category: 'Entertainment', amount: -15.99, date: '2024-05-19' },
-    { type: 'Gas', category: 'Transport', amount: -45.10, date: '2024-05-18' },
-    { type: 'Dinner Out', category: 'Food', amount: -120.00, date: '2024-05-17' },
+    { type: 'Supermercado', category: 'Alimentação', amount: -75.42, date: '2024-05-20' },
+    { type: 'Salário', category: 'Renda', amount: 3000.00, date: '2024-05-20' },
+    { type: 'Netflix', category: 'Lazer', amount: -15.99, date: '2024-05-19' },
+    { type: 'Gasolina', category: 'Transporte', amount: -45.10, date: '2024-05-18' },
+    { type: 'Jantar Fora', category: 'Alimentação', amount: -120.00, date: '2024-05-17' },
 ]
 
 const chartData = [
-  { category: "Food", value: 400, fill: "var(--color-food)" },
-  { category: "Housing", value: 1200, fill: "var(--color-housing)" },
-  { category: "Transport", value: 250, fill: "var(--color-transport)" },
-  { category: "Entertainment", value: 150, fill: "var(--color-entertainment)" },
-  { category: "Other", value: 300, fill: "var(--color-other)" },
+  { category: "Alimentação", value: 400, fill: "var(--color-food)" },
+  { category: "Moradia", value: 1200, fill: "var(--color-housing)" },
+  { category: "Transporte", value: 250, fill: "var(--color-transport)" },
+  { category: "Lazer", value: 150, fill: "var(--color-entertainment)" },
+  { category: "Outros", value: 300, fill: "var(--color-other)" },
 ]
 
 const chartConfig = {
   value: {
-    label: "Value",
+    label: "Valor",
   },
   food: {
-    label: "Food",
+    label: "Alimentação",
     color: "hsl(var(--chart-1))",
   },
   housing: {
-    label: "Housing",
+    label: "Moradia",
     color: "hsl(var(--chart-2))",
   },
   transport: {
-    label: "Transport",
+    label: "Transporte",
     color: "hsl(var(--chart-3))",
   },
   entertainment: {
-    label: "Entertainment",
+    label: "Lazer",
     color: "hsl(var(--chart-4))",
   },
   other: {
-    label: "Other",
+    label: "Outros",
     color: "hsl(var(--chart-5))",
   },
 }
@@ -73,53 +73,53 @@ export default function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Current Balance</CardDescription>
-              <CardTitle className="text-4xl">$5,329</CardTitle>
+              <CardDescription>Saldo Atual</CardDescription>
+              <CardTitle className="text-4xl">R$5.329</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-xs text-muted-foreground">+25% from last month</div>
+              <div className="text-xs text-muted-foreground">+25% do último mês</div>
             </CardContent>
             <CardFooter>
-              <Progress value={25} aria-label="25% increase" />
+              <Progress value={25} aria-label="Aumento de 25%" />
             </CardFooter>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>This Month's Spending</CardDescription>
-              <CardTitle className="text-4xl">$1,329</CardTitle>
+              <CardDescription>Gastos deste Mês</CardDescription>
+              <CardTitle className="text-4xl">R$1.329</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-xs text-muted-foreground">+10% from last month</div>
+              <div className="text-xs text-muted-foreground">+10% do último mês</div>
             </CardContent>
             <CardFooter>
-              <Progress value={10} aria-label="10% increase" />
+              <Progress value={10} aria-label="Aumento de 10%" />
             </CardFooter>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Upcoming Bills</CardDescription>
-              <CardTitle className="text-4xl">$250.75</CardTitle>
+              <CardDescription>Contas a Vencer</CardDescription>
+              <CardTitle className="text-4xl">R$250,75</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-xs text-muted-foreground">3 bills due this week</div>
+              <div className="text-xs text-muted-foreground">3 contas vencendo esta semana</div>
             </CardContent>
              <CardFooter>
               <Button size="sm" asChild>
-                <Link href="/dashboard/recurring">View Bills</Link>
+                <Link href="/dashboard/recurring">Ver Contas</Link>
               </Button>
             </CardFooter>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>AI Suggestion</CardDescription>
-              <CardTitle className="text-lg">Save on Groceries</CardTitle>
+              <CardDescription>Sugestão da IA</CardDescription>
+              <CardTitle className="text-lg">Economize no Supermercado</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-xs text-muted-foreground">You can save up to $50/month.</div>
+              <div className="text-xs text-muted-foreground">Você pode economizar até R$50/mês.</div>
             </CardContent>
             <CardFooter>
                <Button size="sm" asChild>
-                <Link href="/dashboard/savings-ai">Learn More</Link>
+                <Link href="/dashboard/savings-ai">Saiba Mais</Link>
               </Button>
             </CardFooter>
           </Card>
@@ -127,17 +127,17 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
           <Card className="lg:col-span-4">
             <CardHeader>
-              <CardTitle>Recent Transactions</CardTitle>
-              <CardDescription>A list of your most recent transactions.</CardDescription>
+              <CardTitle>Transações Recentes</CardTitle>
+              <CardDescription>Uma lista de suas transações mais recentes.</CardDescription>
             </CardHeader>
             <CardContent>
                <Table>
                 <TableHeader>
                     <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -149,7 +149,7 @@ export default function DashboardPage() {
                         </TableCell>
                         <TableCell>{t.date}</TableCell>
                         <TableCell className={`text-right ${t.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {t.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                        {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </TableCell>
                     </TableRow>
                     ))}
@@ -158,14 +158,14 @@ export default function DashboardPage() {
             </CardContent>
              <CardFooter className="flex justify-end">
                <Button asChild>
-                 <Link href="/dashboard/expenses">View All Transactions <ArrowUpRight className="ml-2 h-4 w-4" /></Link>
+                 <Link href="/dashboard/expenses">Ver Todas as Transações <ArrowUpRight className="ml-2 h-4 w-4" /></Link>
                </Button>
             </CardFooter>
           </Card>
           <Card className="lg:col-span-3">
             <CardHeader>
-              <CardTitle>Spending by Category</CardTitle>
-              <CardDescription>Your spending distribution for this month.</CardDescription>
+              <CardTitle>Gastos por Categoria</CardTitle>
+              <CardDescription>Sua distribuição de gastos para este mês.</CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center">
                 <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px]">
@@ -181,10 +181,10 @@ export default function DashboardPage() {
             </CardContent>
             <CardFooter className="flex-col gap-2 text-sm">
                 <div className="flex w-full items-center gap-2 font-medium leading-none">
-                    Top Category: Food
+                    Principal Categoria: Alimentação
                 </div>
                 <div className="flex w-full items-center gap-2 leading-none text-muted-foreground">
-                    You've spent $400 on food this month.
+                    Você gastou R$400 em alimentação este mês.
                 </div>
             </CardFooter>
           </Card>

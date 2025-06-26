@@ -4,11 +4,11 @@ export default function RecurringPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recurring Expense Forecast</CardTitle>
-        <CardDescription>Add recurring expenses to automatically generate future expense forecasts for up to 6 months.</CardDescription>
+        <CardTitle>Previsão de Despesas Recorrentes</CardTitle>
+        <CardDescription>Adicione despesas recorrentes para gerar automaticamente previsões de despesas futuras por até 6 meses.</CardDescription>
       </CardHeader>
       <CardContent>
-        <p>Manage your fixed expenses like rent, subscriptions, and utilities. SolarFin will use this information to predict your spending for the next 6 months, helping you budget effectively.</p>
+        <p>Gerencie suas despesas fixas como aluguel, assinaturas e serviços públicos. A SolarFin usará essas informações para prever seus gastos para os próximos 6 meses, ajudando você a orçar de forma eficaz.</p>
       </CardContent>
     </Card>
   );

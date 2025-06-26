@@ -4,11 +4,11 @@ export default function ExpensesPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Expense Tracking</CardTitle>
-        <CardDescription>Categorize expenses to track your spending habits effectively.</CardDescription>
+        <CardTitle>Controle de Despesas</CardTitle>
+        <CardDescription>Categorize as despesas para acompanhar seus hábitos de consumo de forma eficaz.</CardDescription>
       </CardHeader>
       <CardContent>
-        <p>This is where you will manage and track all your expenses. Functionality to add, edit, and categorize expenses will be implemented here.</p>
+        <p>É aqui que você gerenciará e acompanhará todas as suas despesas. A funcionalidade para adicionar, editar e categorizar despesas será implementada aqui.</p>
       </CardContent>
     </Card>
   );

@@ -61,12 +61,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Sun className="h-4 w-4 transition-all group-hover:scale-110" />
               <span className="sr-only">SolarFin</span>
             </Link>
-            <NavItem icon={LayoutDashboard} href="/dashboard" label="Dashboard" />
-            <NavItem icon={ArrowLeftRight} href="/dashboard/expenses" label="Expenses" />
-            <NavItem icon={CreditCard} href="/dashboard/credit-cards" label="Credit Cards" />
-            <NavItem icon={Landmark} href="/dashboard/loans" label="Loans" />
-            <NavItem icon={Repeat} href="/dashboard/recurring" label="Recurring" />
-            <NavItem icon={Sparkles} href="/dashboard/savings-ai" label="AI Savings" />
+            <NavItem icon={LayoutDashboard} href="/dashboard" label="Painel" />
+            <NavItem icon={ArrowLeftRight} href="/dashboard/expenses" label="Despesas" />
+            <NavItem icon={CreditCard} href="/dashboard/credit-cards" label="Cartões de Crédito" />
+            <NavItem icon={Landmark} href="/dashboard/loans" label="Empréstimos" />
+            <NavItem icon={Repeat} href="/dashboard/recurring" label="Recorrentes" />
+            <NavItem icon={Sparkles} href="/dashboard/savings-ai" label="Economia com IA" />
           </nav>
           <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
             <Tooltip>
@@ -75,7 +75,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <Avatar className="h-8 w-8">
                     <AvatarFallback>{getInitials(user.email || 'U')}</AvatarFallback>
                   </Avatar>
-                  <span className="sr-only">User</span>
+                  <span className="sr-only">Usuário</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="right">{user.email}</TooltipContent>
@@ -84,10 +84,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" onClick={logout} className="h-9 w-9 rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8">
                   <LogOut className="h-5 w-5" />
-                  <span className="sr-only">Logout</span>
+                  <span className="sr-only">Sair</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right">Logout</TooltipContent>
+              <TooltipContent side="right">Sair</TooltipContent>
             </Tooltip>
           </nav>
         </aside>

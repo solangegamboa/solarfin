@@ -4,11 +4,11 @@ export default function SavingsAIPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>AI Savings Suggestions</CardTitle>
-        <CardDescription>A financial planning tool providing personalized savings suggestions.</CardDescription>
+        <CardTitle>Sugestões de Economia da IA</CardTitle>
+        <CardDescription>Uma ferramenta de planejamento financeiro que oferece sugestões de economia personalizadas.</CardDescription>
       </CardHeader>
       <CardContent>
-        <p>Based on an analysis of your income and spending data, our generative AI will provide personalized suggestions on how to optimize your savings, manage debt, and make smart investments.</p>
+        <p>Com base em uma análise de seus dados de renda e gastos, nossa IA generativa fornecerá sugestões personalizadas sobre como otimizar suas economias, gerenciar dívidas e fazer investimentos inteligentes.</p>
       </CardContent>
     </Card>
   );

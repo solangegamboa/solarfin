@@ -4,11 +4,11 @@ export default function CreditCardsPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Credit Card Management</CardTitle>
-        <CardDescription>Record and manage credit card purchases with installment plans.</CardDescription>
+        <CardTitle>Gerenciamento de Cartão de Crédito</CardTitle>
+        <CardDescription>Registre e gerencie compras no cartão de crédito com parcelamento.</CardDescription>
       </CardHeader>
       <CardContent>
-        <p>This section will allow you to manage your credit card purchases, especially those with installment plans. You'll be able to track payments, interest, and due dates.</p>
+        <p>Esta seção permitirá que você gerencie suas compras no cartão de crédito, especialmente aquelas com parcelamento. Você poderá rastrear pagamentos, juros e datas de vencimento.</p>
       </CardContent>
     </Card>
   );

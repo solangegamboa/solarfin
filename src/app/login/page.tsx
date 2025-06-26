@@ -31,8 +31,8 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
 const loginSchema = z.object({
-  email: z.string().email({ message: 'Invalid email address.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  email: z.string().email({ message: 'Endereço de e-mail inválido.' }),
+  password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -58,8 +58,8 @@ export default function LoginPage() {
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Login Failed',
-        description: error.message || 'An unknown error occurred.',
+        title: 'Falha no Login',
+        description: error.message || 'Ocorreu um erro desconhecido.',
       });
     } finally {
       setIsLoading(false);
@@ -73,8 +73,8 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Sun className="h-8 w-8" />
           </div>
-          <CardTitle className="text-2xl font-headline">Welcome to SolarFin</CardTitle>
-          <CardDescription>Enter your credentials to access your account</CardDescription>
+          <CardTitle className="text-2xl font-headline">Bem-vindo à SolarFin</CardTitle>
+          <CardDescription>Insira suas credenciais para acessar sua conta</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -84,9 +84,9 @@ export default function LoginPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>E-mail</FormLabel>
                     <FormControl>
-                      <Input placeholder="name@example.com" {...field} />
+                      <Input placeholder="nome@exemplo.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -97,7 +97,7 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Senha</FormLabel>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
@@ -106,16 +106,16 @@ export default function LoginPage() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Signing In...' : 'Sign In'}
+                {isLoading ? 'Entrando...' : 'Entrar'}
               </Button>
             </form>
           </Form>
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
-            Don't have an account?{' '}
+            Não tem uma conta?{' '}
             <Link href="/signup" className="font-medium text-primary hover:underline">
-              Sign up
+              Cadastre-se
             </Link>
           </p>
         </CardFooter>
