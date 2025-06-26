@@ -66,6 +66,7 @@ type TransactionFormValues = z.infer<typeof transactionSchema>;
 
 export default function TransactionsPage() {
   const [open, setOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { transactions, addTransaction, loading } = useTransactions();
   const { toast } = useToast();
 
@@ -81,6 +82,7 @@ export default function TransactionsPage() {
   });
 
   const onSubmit = async (data: TransactionFormValues) => {
+    setIsSaving(true);
     try {
       await addTransaction(data);
       toast({
@@ -95,6 +97,8 @@ export default function TransactionsPage() {
         title: "Erro ao Salvar",
         description: "Não foi possível salvar a transação. Tente novamente.",
       });
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -241,7 +245,9 @@ export default function TransactionsPage() {
                                 />
 
                             <DialogFooter>
-                            <Button type="submit">Salvar Transação</Button>
+                            <Button type="submit" disabled={isSaving}>
+                                {isSaving ? "Salvando..." : "Salvar Transação"}
+                            </Button>
                             </DialogFooter>
                         </form>
                     </Form>
