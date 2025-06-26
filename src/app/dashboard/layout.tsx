@@ -62,7 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className="sr-only">SolarFin</span>
             </Link>
             <NavItem icon={LayoutDashboard} href="/dashboard" label="Painel" />
-            <NavItem icon={ArrowLeftRight} href="/dashboard/expenses" label="Despesas" />
+            <NavItem icon={ArrowLeftRight} href="/dashboard/expenses" label="Transações" />
             <NavItem icon={CreditCard} href="/dashboard/credit-cards" label="Cartões de Crédito" />
             <NavItem icon={Landmark} href="/dashboard/loans" label="Empréstimos" />
             <NavItem icon={Repeat} href="/dashboard/recurring" label="Recorrentes" />
