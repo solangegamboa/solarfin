@@ -48,6 +48,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { useTransactions } from "@/contexts/transactions-context";
 
 const transactionSchema = z.object({
   description: z.string().min(2, { message: "A descrição deve ter pelo menos 2 caracteres." }),
@@ -63,26 +64,9 @@ const transactionSchema = z.object({
 
 type TransactionFormValues = z.infer<typeof transactionSchema>;
 
-type Transaction = {
-    id: string;
-    description: string;
-    amount: number;
-    date: Date;
-    type: 'entrada' | 'saida';
-    category: string;
-}
-
-// Mock data for now
-const initialTransactions: Transaction[] = [
-    { id: '1', description: 'Salário', amount: 5000, date: new Date(), type: 'entrada', category: 'Renda' },
-    { id: '2', description: 'Compras no Supermercado', amount: 350.75, date: new Date(), type: 'saida', category: 'Alimentação' },
-    { id: '3', description: 'Conta de Luz', amount: 120.00, date: new Date(), type: 'saida', category: 'Moradia' },
-];
-
-
 export default function TransactionsPage() {
   const [open, setOpen] = useState(false);
-  const [transactions, setTransactions] = useState(initialTransactions);
+  const { transactions, addTransaction } = useTransactions();
   const { toast } = useToast();
 
   const form = useForm<TransactionFormValues>({
@@ -97,11 +81,7 @@ export default function TransactionsPage() {
   });
 
   const onSubmit = (data: TransactionFormValues) => {
-    const newTransaction: Transaction = {
-        id: (transactions.length + 1).toString(),
-        ...data,
-    };
-    setTransactions(prev => [newTransaction, ...prev]);
+    addTransaction(data);
 
     toast({
       title: "Transação Adicionada",

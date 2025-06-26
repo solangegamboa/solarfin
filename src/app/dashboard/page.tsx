@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { format, addMonths, subMonths } from "date-fns";
+import { useState, useMemo } from "react";
+import { format, addMonths, subMonths, isSameMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Card,
@@ -26,36 +26,38 @@ import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Pie, PieChart, Cell } from "recharts";
 import Link from "next/link";
-
+import { useTransactions } from "@/contexts/transactions-context";
 
 const chartConfig = {
   value: {
     label: "Valor",
   },
-  food: {
+  Alimentação: {
     label: "Alimentação",
     color: "hsl(var(--chart-1))",
   },
-  housing: {
+  Moradia: {
     label: "Moradia",
     color: "hsl(var(--chart-2))",
   },
-  transport: {
+  Transporte: {
     label: "Transporte",
     color: "hsl(var(--chart-3))",
   },
-  entertainment: {
+  Lazer: {
     label: "Lazer",
     color: "hsl(var(--chart-4))",
   },
-  other: {
+  Outros: {
     label: "Outros",
     color: "hsl(var(--chart-5))",
   },
 }
 
+
 export default function DashboardPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
+    const { transactions } = useTransactions();
 
     const handlePreviousMonth = () => {
         setCurrentDate(subMonths(currentDate, 1));
@@ -65,33 +67,56 @@ export default function DashboardPage() {
         setCurrentDate(addMonths(currentDate, 1));
     };
 
-    // Gera dados fictícios com base no mês
-    const monthIndex = currentDate.getMonth();
-    const year = currentDate.getFullYear();
-    
-    // Simula a mudança de dados
-    const saldoAtual = 5329 + (monthIndex * 150) - 400;
-    const gastosMes = 1329 + (monthIndex * 50) - 200;
-    const contasVencer = 250.75 + (monthIndex * 20) - 50;
-    const progressoSaldo = Math.max(0, Math.min(100, 25 + monthIndex * 2 - 5));
-    const progressoGastos = Math.max(0, Math.min(100, 10 + monthIndex * 1 - 2));
+    const {
+        saldoAtual,
+        gastosMes,
+        recentTransactions,
+        chartData
+    } = useMemo(() => {
+        const saldoAtual = transactions.reduce((acc, t) => {
+            return t.type === 'entrada' ? acc + t.amount : acc - t.amount;
+        }, 0);
 
+        const monthlyTransactions = transactions.filter(t => isSameMonth(t.date, currentDate));
 
-    const transactions = [
-        { type: 'Supermercado', category: 'Alimentação', amount: -75.42 - (monthIndex * 2), date: format(new Date(year, monthIndex, 20), 'yyyy-MM-dd') },
-        { type: 'Salário', category: 'Renda', amount: 3000.00, date: format(new Date(year, monthIndex, 5), 'yyyy-MM-dd') },
-        { type: 'Netflix', category: 'Lazer', amount: -15.99, date: format(new Date(year, monthIndex, 19), 'yyyy-MM-dd') },
-        { type: 'Gasolina', category: 'Transporte', amount: -45.10 - (monthIndex * 1.5), date: format(new Date(year, monthIndex, 18), 'yyyy-MM-dd') },
-        { type: 'Jantar Fora', category: 'Alimentação', amount: -120.00 - (monthIndex * 5), date: format(new Date(year, monthIndex, 17), 'yyyy-MM-dd') },
-    ]
+        const gastosMes = monthlyTransactions
+            .filter(t => t.type === 'saida')
+            .reduce((acc, t) => acc + t.amount, 0);
+        
+        const recentTransactions = monthlyTransactions.slice(0, 5);
 
-    const chartData = [
-      { category: "Alimentação", value: Math.max(0, 400 + monthIndex * 10 - 20), fill: "var(--color-food)" },
-      { category: "Moradia", value: Math.max(0, 1200 - monthIndex * 20), fill: "var(--color-housing)" },
-      { category: "Transporte", value: Math.max(0, 250 + monthIndex * 5 - 10), fill: "var(--color-transport)" },
-      { category: "Lazer", value: Math.max(0, 150 - monthIndex * 5), fill: "var(--color-entertainment)" },
-      { category: "Outros", value: Math.max(0, 300 + monthIndex * 15 - 25), fill: "var(--color-other)" },
-    ]
+        const expensesByCategory = monthlyTransactions
+            .filter(t => t.type === 'saida')
+            .reduce((acc, t) => {
+                if (!acc[t.category]) {
+                    acc[t.category] = 0;
+                }
+                acc[t.category] += t.amount;
+                return acc;
+            }, {} as Record<string, number>);
+
+        const categoryColors: Record<string, string> = {
+            'Alimentação': 'var(--color-food)',
+            'Moradia': 'var(--color-housing)',
+            'Transporte': 'var(--color-transport)',
+            'Lazer': 'var(--color-entertainment)',
+            'Outros': 'var(--color-other)',
+        }
+
+        const chartData = Object.entries(expensesByCategory).map(([category, value]) => ({
+            category,
+            value,
+            fill: categoryColors[category] || categoryColors['Outros'],
+        }));
+
+        return { saldoAtual, gastosMes, recentTransactions, chartData };
+
+    }, [transactions, currentDate]);
+
+    // Mocked data for now, as it's not directly related to transactions list yet
+    const contasVencer = 250.75;
+    const progressoSaldo = 75;
+    const progressoGastos = 50;
 
     const foodSpending = chartData.find(d => d.category === 'Alimentação')?.value || 0;
 
@@ -171,31 +196,40 @@ export default function DashboardPage() {
             <Card className="lg:col-span-4">
                 <CardHeader>
                 <CardTitle>Transações Recentes</CardTitle>
-                <CardDescription>Uma lista de suas transações mais recentes.</CardDescription>
+                <CardDescription>Uma lista de suas transações mais recentes neste mês.</CardDescription>
                 </CardHeader>
                 <CardContent>
                 <Table>
                     <TableHeader>
                         <TableRow>
-                        <TableHead>Tipo</TableHead>
+                        <TableHead>Descrição</TableHead>
                         <TableHead>Categoria</TableHead>
                         <TableHead>Data</TableHead>
                         <TableHead className="text-right">Valor</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {transactions.map((t, i) => (
-                        <TableRow key={i}>
-                            <TableCell className="font-medium">{t.type}</TableCell>
-                            <TableCell>
-                                <Badge variant="outline">{t.category}</Badge>
-                            </TableCell>
-                            <TableCell>{t.date}</TableCell>
-                            <TableCell className={`text-right ${t.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </TableCell>
-                        </TableRow>
-                        ))}
+                        {recentTransactions.length > 0 ? (
+                            recentTransactions.map((t) => (
+                                <TableRow key={t.id}>
+                                    <TableCell className="font-medium">{t.description}</TableCell>
+                                    <TableCell>
+                                        <Badge variant="outline">{t.category}</Badge>
+                                    </TableCell>
+                                    <TableCell>{format(t.date, "dd/MM/yyyy", { locale: ptBR })}</TableCell>
+                                    <TableCell className={`text-right ${t.type === 'entrada' ? 'text-green-500' : 'text-red-500'}`}>
+                                    {t.type === 'saida' ? '-' : ''}
+                                    {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center">
+                                    Nenhuma transação neste mês.
+                                </TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                     </Table>
                 </CardContent>
