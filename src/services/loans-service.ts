@@ -29,6 +29,10 @@ export const getLoansFromFirestore = async (userId: string): Promise<Loan[]> => 
     const loans: Loan[] = [];
     querySnapshot.forEach((doc) => {
         const data = doc.data();
+        if (!data.contractDate) {
+            console.warn(`Loan with id ${doc.id} is missing a contractDate and will be skipped.`);
+            return;
+        }
         loans.push({
             id: doc.id,
             institutionName: data.institutionName,

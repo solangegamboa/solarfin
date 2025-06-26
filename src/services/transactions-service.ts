@@ -37,6 +37,10 @@ export const getTransactionsFromFirestore = async (userId: string): Promise<Tran
     const transactions: Transaction[] = [];
     querySnapshot.forEach((doc) => {
         const data = doc.data();
+        if (!data.date) {
+            console.warn(`Transaction with id ${doc.id} is missing a date and will be skipped.`);
+            return;
+        }
         transactions.push({
             id: doc.id,
             description: data.description,
