@@ -1,129 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, PlusCircle, Trash2, Upload, CreditCard } from "lucide-react";
+import { Trash2, CreditCard } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useTransactions } from "@/contexts/transactions-context";
 import { useCreditCards } from "@/hooks/use-credit-cards";
 import type { Transaction } from "@/contexts/transactions-context";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { readReceipt } from "@/ai/flows/read-receipt-flow";
-
-const transactionSchema = z.object({
-  description: z.string().min(2, "A descrição é obrigatória."),
-  amount: z.coerce.number().min(0.01, "O valor deve ser maior que zero."),
-  date: z.date({ required_error: "A data é obrigatória." }),
-  category: z.string().min(2, "A categoria é obrigatória."),
-  type: z.enum(["entrada", "saida"]),
-  paymentMethod: z.enum(["money", "credit_card"]),
-  creditCardId: z.string().optional(),
-  installments: z.coerce.number().optional(),
-}).refine((data) => {
-    if (data.paymentMethod === 'credit_card') {
-        return !!data.creditCardId && !!data.installments && data.installments > 0;
-    }
-    return true;
-}, {
-    message: "Para cartão de crédito, selecione o cartão e o número de parcelas.",
-    path: ["creditCardId"], 
-});
-
-type TransactionFormValues = z.infer<typeof transactionSchema>;
+import { AddTransactionButton } from "@/components/add-transaction-button";
 
 export default function TransactionsPage() {
-  const [open, setOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [activeTab, setActiveTab] = useState("manual");
   
-  const { transactions, addTransaction, deleteTransaction, loading } = useTransactions();
-  const { cards, loading: cardsLoading } = useCreditCards();
+  const { transactions, deleteTransaction, loading } = useTransactions();
+  const { cards } = useCreditCards();
   const { toast } = useToast();
-
-  const form = useForm<TransactionFormValues>({
-    resolver: zodResolver(transactionSchema),
-    defaultValues: {
-        description: "",
-        amount: 0,
-        date: new Date(),
-        category: "",
-        type: "saida",
-        paymentMethod: "money",
-        installments: 1,
-    }
-  });
-
-  const paymentMethod = form.watch("paymentMethod");
-
-  useEffect(() => {
-    if (paymentMethod === 'credit_card') {
-      form.setValue('type', 'saida');
-      const defaultCard = cards.find(c => c.isDefault);
-      if (defaultCard) {
-        form.setValue('creditCardId', defaultCard.id);
-      }
-    } else {
-        form.setValue('type', 'saida');
-    }
-  }, [paymentMethod, form, cards]);
-
-
-  const onSubmit = async (data: TransactionFormValues) => {
-    setIsSaving(true);
-    try {
-      const transactionData = { ...data };
-      if (data.paymentMethod === 'money') {
-        delete transactionData.creditCardId;
-        delete transactionData.installments;
-      }
-
-      await addTransaction(transactionData);
-      toast({
-        title: "Transação Adicionada",
-        description: `Sua transação "${data.description}" foi salva.`,
-      });
-      form.reset({
-        description: "",
-        amount: 0,
-        date: new Date(),
-        category: "",
-        type: "saida",
-        paymentMethod: "money",
-        installments: 1,
-      });
-      setActiveTab("manual");
-      setOpen(false);
-    } catch (error) {
-       toast({
-        variant: "destructive",
-        title: "Erro ao Salvar",
-        description: "Não foi possível salvar a transação. Tente novamente.",
-      });
-    } finally {
-        setIsSaving(false);
-    }
-  };
 
   const handleDelete = async () => {
     if (!transactionToDelete) return;
@@ -146,50 +45,6 @@ export default function TransactionsPage() {
     }
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setIsAnalyzing(true);
-    try {
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-            const dataUri = reader.result as string;
-            const result = await readReceipt({ photoDataUri: dataUri });
-            
-            if (result && result.amount) {
-                form.setValue("amount", result.amount);
-                toast({
-                    title: "Valor Extraído com Sucesso",
-                    description: `O valor de ${result.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} foi preenchido.`,
-                });
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "Falha ao Ler o Cupom",
-                    description: "Não foi possível identificar o valor total no cupom. Por favor, preencha manually.",
-                });
-            }
-            form.setValue("type", "saida");
-            form.setValue("paymentMethod", "money");
-            setActiveTab("manual");
-            setIsAnalyzing(false);
-        };
-        reader.readAsDataURL(file);
-    } catch (error) {
-        console.error("Error reading receipt:", error);
-        toast({
-            variant: "destructive",
-            title: "Erro na Análise",
-            description: "Ocorreu um erro ao processar a imagem.",
-        });
-        setIsAnalyzing(false);
-    }
-    if (event.target) {
-        event.target.value = '';
-    }
-  };
-  
   const getCardName = (cardId: string | undefined) => cards.find(c => c.id === cardId)?.name || 'N/A';
 
   return (
@@ -200,97 +55,7 @@ export default function TransactionsPage() {
                 <CardTitle>Transações</CardTitle>
                 <CardDescription>Gerencie suas transações de entrada e saída.</CardDescription>
             </div>
-            <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild>
-                    <Button size="sm" className="gap-1">
-                        <PlusCircle className="h-4 w-4" /> Nova Transação
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Adicionar Nova Transação</DialogTitle>
-                        <DialogDescription>Preencha os detalhes manualmente ou envie um cupom fiscal.</DialogDescription>
-                    </DialogHeader>
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                                <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger value="manual">Manual</TabsTrigger>
-                                    <TabsTrigger value="receipt">Cupom Fiscal</TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="manual" className="space-y-4 pt-4">
-                                     <FormField control={form.control} name="paymentMethod" render={({ field }) => (
-                                        <FormItem className="space-y-3">
-                                            <FormLabel>Método de Pagamento</FormLabel>
-                                            <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4">
-                                                <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="money" /></FormControl><FormLabel className="font-normal">Dinheiro/Débito</FormLabel></FormItem>
-                                                <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="credit_card" /></FormControl><FormLabel className="font-normal">Cartão de Crédito</FormLabel></FormItem>
-                                            </RadioGroup>
-                                        </FormItem>
-                                    )} />
-                                    
-                                    {paymentMethod === 'money' && (
-                                         <FormField control={form.control} name="type" render={({ field }) => (
-                                            <FormItem className="space-y-3">
-                                                <FormLabel>Tipo de Transação</FormLabel>
-                                                <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4">
-                                                    <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="entrada" /></FormControl><FormLabel className="font-normal">Entrada</FormLabel></FormItem>
-                                                    <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="saida" /></FormControl><FormLabel className="font-normal">Saída</FormLabel></FormItem>
-                                                </RadioGroup>
-                                            </FormItem>
-                                        )} />
-                                    )}
-
-                                    {paymentMethod === 'credit_card' && (
-                                        <>
-                                            <FormField control={form.control} name="creditCardId" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Cartão de Crédito</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <FormControl>
-                                                            <SelectTrigger disabled={cardsLoading}>
-                                                                <SelectValue placeholder="Selecione um cartão" />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            {cards.map(card => <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>)}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </FormItem>
-                                            )} />
-                                            <FormField control={form.control} name="installments" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Número de Parcelas</FormLabel>
-                                                    <FormControl><Input type="number" placeholder="1" {...field} /></FormControl>
-                                                </FormItem>
-                                            )} />
-                                        </>
-                                    )}
-                                    
-                                    <FormField control={form.control} name="description" render={({ field }) => (
-                                        <FormItem><FormLabel>Descrição</FormLabel><FormControl><Input placeholder="Ex: Salário, Aluguel" {...field} /></FormControl><FormMessage /></FormItem>
-                                    )} />
-                                    <FormField control={form.control} name="amount" render={({ field }) => (
-                                        <FormItem><FormLabel>{paymentMethod === 'credit_card' ? 'Valor da Parcela' : 'Valor'}</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
-                                    )} />
-                                    <FormField control={form.control} name="category" render={({ field }) => (
-                                        <FormItem><FormLabel>Categoria</FormLabel><FormControl><Input placeholder="Ex: Renda, Moradia" {...field} /></FormControl><FormMessage /></FormItem>
-                                    )} />
-                                    <FormField control={form.control} name="date" render={({ field }) => (
-                                        <FormItem className="flex flex-col"><FormLabel>Data da {paymentMethod === 'credit_card' ? 'Compra' : 'Transação'}</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal",!field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP", { locale: ptBR }) : (<span>Escolha uma data</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus locale={ptBR} /></PopoverContent></Popover><FormMessage /></FormItem>
-                                    )} />
-                                </TabsContent>
-                                <TabsContent value="receipt"><div className="flex flex-col items-center justify-center space-y-4 pt-8 pb-4"><Upload className="h-12 w-12 text-muted-foreground" /><p className="text-center text-sm text-muted-foreground">Envie uma imagem do seu cupom fiscal e nós preencheremos o valor para você.</p><Button asChild disabled={isAnalyzing} className="cursor-pointer"><label htmlFor="receipt-upload">{isAnalyzing ? "Analisando..." : "Enviar Imagem"}</label></Button><Input id="receipt-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} disabled={isAnalyzing} /></div></TabsContent>
-                            </Tabs>
-                            <DialogFooter>
-                                <Button type="submit" disabled={isSaving || isAnalyzing || cardsLoading}>
-                                    {isSaving ? "Salvando..." : "Salvar Transação"}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
+            <AddTransactionButton />
         </CardHeader>
         <CardContent>
             <Table>

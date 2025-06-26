@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useTransactions } from "@/contexts/transactions-context";
 import { useCreditCards } from "@/hooks/use-credit-cards";
 import { ChartConfig } from "@/components/ui/chart";
+import { AddTransactionButton } from "@/components/add-transaction-button";
 
 const chartConfig = {
   value: { label: "Valor" },
@@ -117,6 +118,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" onClick={handlePreviousMonth} className="h-7 w-7"><ChevronLeft className="h-4 w-4" /><span className="sr-only">Mês Anterior</span></Button>
                     <Button variant="outline" size="icon" onClick={handleNextMonth} className="h-7 w-7"><ChevronRight className="h-4 w-4" /><span className="sr-only">Próximo Mês</span></Button>
+                    <AddTransactionButton />
                 </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
