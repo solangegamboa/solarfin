@@ -73,10 +73,10 @@ export default function TransactionsPage() {
     resolver: zodResolver(transactionSchema),
     defaultValues: {
         description: "",
-        amount: undefined,
+        amount: 0,
         date: new Date(),
         category: "",
-        type: undefined,
+        type: "saida",
     }
   });
 
