@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { TransactionsProvider } from '@/contexts/transactions-context';
 import { CreditCardsProvider } from '@/contexts/credit-cards-context';
 import { LoansProvider } from '@/contexts/loans-context';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
@@ -75,6 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <NavItem icon={Sparkles} href="/dashboard/savings-ai" label="Economia com IA" />
                 </nav>
                 <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
+                  <ThemeToggle />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8">
