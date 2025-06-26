@@ -11,22 +11,8 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const configToUse =
-  firebaseConfig.apiKey &&
-  firebaseConfig.authDomain &&
-  firebaseConfig.projectId
-    ? firebaseConfig
-    : {
-        apiKey: 'your-api-key',
-        authDomain: 'your-project-id.firebaseapp.com',
-        projectId: 'your-project-id',
-        storageBucket: 'your-project-id.appspot.com',
-        messagingSenderId: 'your-sender-id',
-        appId: 'your-app-id',
-      };
-
 // Initialize Firebase
-const app = !getApps().length ? initializeApp(configToUse) : getApp();
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
 
