@@ -11,6 +11,9 @@ export type Transaction = {
     date: Date;
     type: 'entrada' | 'saida';
     category: string;
+    paymentMethod?: 'money' | 'credit_card';
+    creditCardId?: string;
+    installments?: number;
 }
 
 interface TransactionsContextType {
@@ -49,7 +52,7 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
         }
         setLoading(true);
         const newTransaction = await addTransactionToFirestore(transaction, user.uid);
-        setTransactions(prev => [newTransaction, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
+        setTransactions(prev => [newTransaction, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         setLoading(false);
     }, [user]);
 

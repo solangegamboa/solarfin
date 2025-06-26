@@ -44,10 +44,13 @@ export const getTransactionsFromFirestore = async (userId: string): Promise<Tran
             date: (data.date as Timestamp).toDate(),
             type: data.type,
             category: data.category,
+            paymentMethod: data.paymentMethod,
+            creditCardId: data.creditCardId,
+            installments: data.installments,
         });
     });
 
-    return transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+    return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
 
 export const deleteTransactionFromFirestore = async (transactionId: string): Promise<void> => {
