@@ -18,7 +18,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useTransactions } from "@/contexts/transactions-context";
+import { useTransactions, type Transaction } from "@/contexts/transactions-context";
 import { useCreditCards } from "@/hooks/use-credit-cards";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { readReceipt } from "@/ai/flows/read-receipt-flow";
@@ -102,14 +102,22 @@ export function AddTransactionButton() {
         });
       }
 
-      const transactionData = { ...data };
-      if (data.paymentMethod === 'money') {
-        delete transactionData.creditCardId;
-        delete transactionData.installments;
-      }
-      delete (transactionData as Partial<typeof transactionData>).saveAsRecurring;
+      const transactionPayload: Omit<Transaction, 'id'> = {
+          description: data.description,
+          amount: data.amount,
+          date: data.date,
+          category: data.category,
+          type: data.type,
+          paymentMethod: data.paymentMethod,
+      };
 
-      await addTransaction(transactionData);
+      if (data.paymentMethod === 'credit_card') {
+          transactionPayload.creditCardId = data.creditCardId;
+          transactionPayload.installments = data.installments;
+      }
+
+      await addTransaction(transactionPayload);
+      
       toast({
         title: "Transação Adicionada",
         description: `Sua transação "${data.description}" foi salva.`,
