@@ -24,6 +24,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { readReceipt } from "@/ai/flows/read-receipt-flow";
 import { Switch } from "@/components/ui/switch";
 import { useRecurringTransactions } from "@/hooks/use-recurring-transactions";
+import type { RecurringTransaction } from "@/services/recurring-transactions-service";
+
 
 const transactionSchema = z.object({
   description: z.string().min(2, "A descrição é obrigatória."),
@@ -92,14 +94,19 @@ export function AddTransactionButton() {
     setIsSaving(true);
     try {
       if (data.saveAsRecurring && data.type === 'saida') {
-        await addRecurringTransaction({
+        const recurringPayload: Omit<RecurringTransaction, 'id' | 'userId'> = {
           description: data.description,
           amount: data.amount,
           category: data.category,
           paymentMethod: data.paymentMethod,
-          creditCardId: data.creditCardId,
           dayOfMonth: data.date.getDate(),
-        });
+        };
+
+        if (data.paymentMethod === 'credit_card') {
+          recurringPayload.creditCardId = data.creditCardId;
+        }
+
+        await addRecurringTransaction(recurringPayload);
       }
 
       const transactionPayload: Omit<Transaction, 'id'> = {
@@ -135,6 +142,7 @@ export function AddTransactionButton() {
       setActiveTab("manual");
       setOpen(false);
     } catch (error) {
+       console.error("Failed to save transaction:", error);
        toast({
         variant: "destructive",
         title: "Erro ao Salvar",
@@ -261,7 +269,7 @@ export function AddTransactionButton() {
                                 <FormItem><FormLabel>Descrição</FormLabel><FormControl><Input placeholder="Ex: Salário, Aluguel" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="amount" render={({ field }) => (
-                                <FormItem><FormLabel>{paymentMethod === 'credit_card' ? 'Valor da Parcela' : 'Valor'}</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>{paymentMethod === 'credit_card' ? 'Valor da Compra' : 'Valor'}</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="category" render={({ field }) => (
                                 <FormItem><FormLabel>Categoria</FormLabel><FormControl><Input placeholder="Ex: Renda, Moradia" {...field} /></FormControl><FormMessage /></FormItem>

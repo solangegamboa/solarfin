@@ -66,11 +66,19 @@ export default function DashboardPage() {
             const purchaseDate = new Date(purchase.date);
 
             for (let i = 0; i < purchase.installments; i++) {
-                const closingDateForInstallment = new Date(purchaseDate.getFullYear(), purchaseDate.getMonth() + i, card.closingDay);
-                if(purchaseDate.getDate() > card.closingDay) {
-                    closingDateForInstallment.setMonth(closingDateForInstallment.getMonth() + 1);
-                }
+                const installmentDate = addMonths(purchaseDate, i);
                 
+                // Determine the closing date for this specific installment
+                let closingDateForInstallment = new Date(installmentDate.getFullYear(), installmentDate.getMonth(), card.closingDay);
+
+                // If the purchase was made after the closing day in its month, the first installment is on the next bill
+                if(purchaseDate.getDate() > card.closingDay && i === 0) {
+                   closingDateForInstallment = addMonths(closingDateForInstallment, 1);
+                } else if (i > 0) {
+                   // For subsequent installments, they just fall on the subsequent months' closing dates
+                   closingDateForInstallment = addMonths(new Date(purchaseDate.getFullYear(), purchaseDate.getMonth(), card.closingDay), i);
+                }
+
                 if (isSameMonth(closingDateForInstallment, currentDate)) {
                     creditCardExpensesForMonth += installmentAmount;
                 }
