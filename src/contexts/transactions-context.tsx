@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { getTransactionsFromFirestore, addTransactionToFirestore } from '@/services/transactions-service';
 
@@ -42,7 +42,7 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
         fetchTransactions();
     }, [user]);
 
-    const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
+    const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id'>) => {
         if (!user) {
             throw new Error('Usuário não autenticado para adicionar transação');
         }
@@ -51,13 +51,13 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
         // Add new transaction to the beginning of the list and re-sort
         setTransactions(prev => [newTransaction, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
         setLoading(false);
-    };
+    }, [user]);
     
     const value = useMemo(() => ({
         transactions,
         addTransaction,
         loading,
-    }), [transactions, loading]);
+    }), [transactions, loading, addTransaction]);
 
     return (
         <TransactionsContext.Provider value={value}>
