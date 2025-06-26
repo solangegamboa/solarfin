@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, PlusCircle, Upload, CreditCard } from "lucide-react";
+import { CalendarIcon, PlusCircle, Upload } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,8 @@ import { useTransactions } from "@/contexts/transactions-context";
 import { useCreditCards } from "@/hooks/use-credit-cards";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { readReceipt } from "@/ai/flows/read-receipt-flow";
+import { Switch } from "@/components/ui/switch";
+import { useRecurringTransactions } from "@/hooks/use-recurring-transactions";
 
 const transactionSchema = z.object({
   description: z.string().min(2, "A descrição é obrigatória."),
@@ -32,6 +34,7 @@ const transactionSchema = z.object({
   paymentMethod: z.enum(["money", "credit_card"]),
   creditCardId: z.string().optional(),
   installments: z.coerce.number().optional(),
+  saveAsRecurring: z.boolean().default(false),
 }).refine((data) => {
     if (data.paymentMethod === 'credit_card') {
         return !!data.creditCardId && !!data.installments && data.installments > 0;
@@ -51,6 +54,7 @@ export function AddTransactionButton() {
   const [activeTab, setActiveTab] = useState("manual");
   
   const { addTransaction } = useTransactions();
+  const { addRecurringTransaction } = useRecurringTransactions();
   const { cards, loading: cardsLoading } = useCreditCards();
   const { toast } = useToast();
 
@@ -64,10 +68,12 @@ export function AddTransactionButton() {
         type: "saida",
         paymentMethod: "money",
         installments: 1,
+        saveAsRecurring: false,
     }
   });
 
   const paymentMethod = form.watch("paymentMethod");
+  const transactionType = form.watch("type");
 
   useEffect(() => {
     if (paymentMethod === 'credit_card') {
@@ -85,11 +91,23 @@ export function AddTransactionButton() {
   const onSubmit = async (data: TransactionFormValues) => {
     setIsSaving(true);
     try {
+      if (data.saveAsRecurring && data.type === 'saida') {
+        await addRecurringTransaction({
+          description: data.description,
+          amount: data.amount,
+          category: data.category,
+          paymentMethod: data.paymentMethod,
+          creditCardId: data.creditCardId,
+          dayOfMonth: data.date.getDate(),
+        });
+      }
+
       const transactionData = { ...data };
       if (data.paymentMethod === 'money') {
         delete transactionData.creditCardId;
         delete transactionData.installments;
       }
+      delete (transactionData as Partial<typeof transactionData>).saveAsRecurring;
 
       await addTransaction(transactionData);
       toast({
@@ -104,6 +122,7 @@ export function AddTransactionButton() {
         type: "saida",
         paymentMethod: "money",
         installments: 1,
+        saveAsRecurring: false,
       });
       setActiveTab("manual");
       setOpen(false);
@@ -242,6 +261,18 @@ export function AddTransactionButton() {
                             <FormField control={form.control} name="date" render={({ field }) => (
                                 <FormItem className="flex flex-col"><FormLabel>Data da {paymentMethod === 'credit_card' ? 'Compra' : 'Transação'}</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal",!field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP", { locale: ptBR }) : (<span>Escolha uma data</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus locale={ptBR} /></PopoverContent></Popover><FormMessage /></FormItem>
                             )} />
+                             {transactionType === "saida" && (
+                                <FormField control={form.control} name="saveAsRecurring" render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center gap-x-3 space-y-0 rounded-md border p-4">
+                                        <FormControl>
+                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                        </FormControl>
+                                        <div className="space-y-0.5">
+                                            <FormLabel className="text-base">Salvar como despesa recorrente</FormLabel>
+                                        </div>
+                                    </FormItem>
+                                )} />
+                             )}
                         </TabsContent>
                         <TabsContent value="receipt"><div className="flex flex-col items-center justify-center space-y-4 pt-8 pb-4"><Upload className="h-12 w-12 text-muted-foreground" /><p className="text-center text-sm text-muted-foreground">Envie uma imagem do seu cupom fiscal e nós preencheremos o valor para você.</p><Button asChild disabled={isAnalyzing} className="cursor-pointer"><label htmlFor="receipt-upload">{isAnalyzing ? "Analisando..." : "Enviar Imagem"}</label></Button><Input id="receipt-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} disabled={isAnalyzing} /></div></TabsContent>
                     </Tabs>
