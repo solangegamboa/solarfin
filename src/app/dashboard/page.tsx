@@ -1,19 +1,22 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
-import { format, addMonths, subMonths, isSameMonth, startOfMonth } from "date-fns";
+import { format, addMonths, subMonths, isSameMonth, startOfMonth, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowUpRight, ChevronLeft, ChevronRight, TrendingDown } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Pie, PieChart, Cell } from "recharts";
 import Link from "next/link";
 import { useTransactions } from "@/contexts/transactions-context";
 import { useCreditCards } from "@/hooks/use-credit-cards";
+import { useLoans } from "@/hooks/use-loans";
+import { useRecurringTransactions } from "@/hooks/use-recurring-transactions";
 import { ChartConfig } from "@/components/ui/chart";
 import { AddTransactionButton } from "@/components/add-transaction-button";
 
@@ -31,8 +34,10 @@ export default function DashboardPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const { transactions, loading: transactionsLoading } = useTransactions();
     const { cards, loading: cardsLoading } = useCreditCards();
+    const { loans, loading: loansLoading } = useLoans();
+    const { recurringTransactions, loading: recurringTransactionsLoading } = useRecurringTransactions();
 
-    const loading = transactionsLoading || cardsLoading;
+    const loading = transactionsLoading || cardsLoading || loansLoading || recurringTransactionsLoading;
 
     const handlePreviousMonth = () => setCurrentDate(subMonths(currentDate, 1));
     const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
@@ -43,7 +48,11 @@ export default function DashboardPage() {
         gastosMes,
         recentTransactions,
         chartData,
-        topCategory
+        topCategory,
+        forecastedExpenses,
+        creditCardBillTotal,
+        loanInstallmentsTotal,
+        recurringExpensesTotal
     } = useMemo(() => {
         // Direct income for the month
         const receitaMes = transactions
@@ -55,7 +64,7 @@ export default function DashboardPage() {
             .filter(t => t.type === 'saida' && (t.paymentMethod === 'money' || !t.paymentMethod) && isSameMonth(new Date(t.date), currentDate));
 
         // Calculate credit card expenses for the month's bill
-        let creditCardExpensesForMonth = 0;
+        let creditCardBillTotal = 0;
         const creditCardPurchases = transactions.filter(t => t.paymentMethod === 'credit_card');
 
         creditCardPurchases.forEach(purchase => {
@@ -68,24 +77,21 @@ export default function DashboardPage() {
             for (let i = 0; i < purchase.installments; i++) {
                 const installmentDate = addMonths(purchaseDate, i);
                 
-                // Determine the closing date for this specific installment
                 let closingDateForInstallment = new Date(installmentDate.getFullYear(), installmentDate.getMonth(), card.closingDay);
 
-                // If the purchase was made after the closing day in its month, the first installment is on the next bill
                 if(purchaseDate.getDate() > card.closingDay && i === 0) {
                    closingDateForInstallment = addMonths(closingDateForInstallment, 1);
                 } else if (i > 0) {
-                   // For subsequent installments, they just fall on the subsequent months' closing dates
                    closingDateForInstallment = addMonths(new Date(purchaseDate.getFullYear(), purchaseDate.getMonth(), card.closingDay), i);
                 }
 
                 if (isSameMonth(closingDateForInstallment, currentDate)) {
-                    creditCardExpensesForMonth += installmentAmount;
+                    creditCardBillTotal += installmentAmount;
                 }
             }
         });
 
-        const gastosMes = moneyExpenses.reduce((acc, t) => acc + t.amount, 0) + creditCardExpensesForMonth;
+        const gastosMes = moneyExpenses.reduce((acc, t) => acc + t.amount, 0) + creditCardBillTotal;
         const balancoMes = receitaMes - gastosMes;
 
         // Combine money expenses and a summary of credit card expenses for the chart
@@ -96,8 +102,8 @@ export default function DashboardPage() {
             return acc;
         }, {} as Record<string, number>);
 
-        if (creditCardExpensesForMonth > 0) {
-            expensesByCategory["Cartão de Crédito"] = creditCardExpensesForMonth;
+        if (creditCardBillTotal > 0) {
+            expensesByCategory["Cartão de Crédito"] = creditCardBillTotal;
         }
 
         const chartData = Object.entries(expensesByCategory).map(([category, value]) => ({
@@ -111,10 +117,37 @@ export default function DashboardPage() {
         const recentTransactions = transactions
             .filter(t => isSameMonth(new Date(t.date), currentDate))
             .slice(0, 5);
+        
+        // --- New Forecast Calculations ---
+        const loanInstallmentsTotal = loans.reduce((acc, loan) => {
+            const paidInstallments = differenceInMonths(currentDate, new Date(loan.contractDate)) + 1;
+            if (paidInstallments > 0 && paidInstallments <= loan.totalInstallments) {
+                return acc + loan.installmentAmount;
+            }
+            return acc;
+        }, 0);
 
-        return { balancoMes, receitaMes, gastosMes, recentTransactions, chartData, topCategory };
+        const recurringExpensesTotal = recurringTransactions
+            .filter(rt => rt.paymentMethod === 'money')
+            .reduce((acc, rt) => acc + rt.amount, 0);
 
-    }, [transactions, cards, currentDate]);
+        const forecastedExpenses = creditCardBillTotal + loanInstallmentsTotal + recurringExpensesTotal;
+
+
+        return { 
+            balancoMes, 
+            receitaMes, 
+            gastosMes, 
+            recentTransactions, 
+            chartData, 
+            topCategory,
+            forecastedExpenses,
+            creditCardBillTotal,
+            loanInstallmentsTotal,
+            recurringExpensesTotal
+        };
+
+    }, [transactions, cards, currentDate, loans, recurringTransactions]);
 
     const formattedDate = format(currentDate, "MMMM 'de' yyyy", { locale: ptBR });
     const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
@@ -143,9 +176,25 @@ export default function DashboardPage() {
                     <CardContent><div className="text-xs text-muted-foreground">Total de saídas e faturas do mês</div></CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="pb-2"><CardDescription>Sugestão da IA</CardDescription><CardTitle className="text-lg">Economize no Supermercado</CardTitle></CardHeader>
-                    <CardContent><div className="text-xs text-muted-foreground">Você pode economizar até R$50/mês.</div></CardContent>
-                    <CardFooter><Button size="sm" asChild><Link href="/dashboard/savings-ai">Saiba Mais</Link></Button></CardFooter>
+                    <CardHeader className="pb-2">
+                        <CardDescription>Previsão de Gastos</CardDescription>
+                        {loading ? <Skeleton className="h-10 w-3/4" /> : <CardTitle className="text-4xl">{forecastedExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>}
+                    </CardHeader>
+                    <CardContent>
+                        {loading ? (
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-2/3" />
+                            </div>
+                        ) : (
+                            <div className="text-xs text-muted-foreground space-y-1">
+                                <div className="flex justify-between"><span>Fatura do Cartão</span><span>{creditCardBillTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+                                <div className="flex justify-between"><span>Empréstimos</span><span>{loanInstallmentsTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+                                <div className="flex justify-between"><span>Despesas Recorrentes</span><span>{recurringExpensesTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+                            </div>
+                        )}
+                    </CardContent>
                 </Card>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
