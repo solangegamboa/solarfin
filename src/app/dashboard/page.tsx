@@ -27,6 +27,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Pie, PieChart, Cell } from "recharts";
 import Link from "next/link";
 import { useTransactions } from "@/contexts/transactions-context";
+import { ChartConfig } from "@/components/ui/chart";
 
 const chartConfig = {
   value: {
@@ -52,7 +53,7 @@ const chartConfig = {
     label: "Outros",
     color: "hsl(var(--chart-5))",
   },
-}
+} satisfies ChartConfig;
 
 
 export default function DashboardPage() {
@@ -71,13 +72,14 @@ export default function DashboardPage() {
         saldoAtual,
         gastosMes,
         recentTransactions,
-        chartData
+        chartData,
+        topCategory
     } = useMemo(() => {
         const saldoAtual = transactions.reduce((acc, t) => {
             return t.type === 'entrada' ? acc + t.amount : acc - t.amount;
         }, 0);
 
-        const monthlyTransactions = transactions.filter(t => isSameMonth(t.date, currentDate));
+        const monthlyTransactions = transactions.filter(t => isSameMonth(new Date(t.date), currentDate));
 
         const gastosMes = monthlyTransactions
             .filter(t => t.type === 'saida')
@@ -88,28 +90,28 @@ export default function DashboardPage() {
         const expensesByCategory = monthlyTransactions
             .filter(t => t.type === 'saida')
             .reduce((acc, t) => {
-                if (!acc[t.category]) {
-                    acc[t.category] = 0;
+                const category = t.category in chartConfig ? t.category : "Outros";
+                if (!acc[category]) {
+                    acc[category] = 0;
                 }
-                acc[t.category] += t.amount;
+                acc[category] += t.amount;
                 return acc;
             }, {} as Record<string, number>);
-
-        const categoryColors: Record<string, string> = {
-            'Alimentação': 'var(--color-food)',
-            'Moradia': 'var(--color-housing)',
-            'Transporte': 'var(--color-transport)',
-            'Lazer': 'var(--color-entertainment)',
-            'Outros': 'var(--color-other)',
-        }
 
         const chartData = Object.entries(expensesByCategory).map(([category, value]) => ({
             category,
             value,
-            fill: categoryColors[category] || categoryColors['Outros'],
+            fill: (chartConfig[category as keyof typeof chartConfig] as any)?.color || (chartConfig["Outros"] as any).color,
         }));
+        
+        const topCategory = chartData.reduce((top, current) => {
+            if (current.value > top.value) {
+                return current;
+            }
+            return top;
+        }, { category: 'Nenhuma', value: 0, fill: '' });
 
-        return { saldoAtual, gastosMes, recentTransactions, chartData };
+        return { saldoAtual, gastosMes, recentTransactions, chartData, topCategory };
 
     }, [transactions, currentDate]);
 
@@ -117,8 +119,6 @@ export default function DashboardPage() {
     const contasVencer = 250.75;
     const progressoSaldo = 75;
     const progressoGastos = 50;
-
-    const foodSpending = chartData.find(d => d.category === 'Alimentação')?.value || 0;
 
     const formattedDate = format(currentDate, "MMMM 'de' yyyy", { locale: ptBR });
     const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
@@ -216,7 +216,7 @@ export default function DashboardPage() {
                                     <TableCell>
                                         <Badge variant="outline">{t.category}</Badge>
                                     </TableCell>
-                                    <TableCell>{format(t.date, "dd/MM/yyyy", { locale: ptBR })}</TableCell>
+                                    <TableCell>{format(new Date(t.date), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
                                     <TableCell className={`text-right ${t.type === 'entrada' ? 'text-green-500' : 'text-red-500'}`}>
                                     {t.type === 'saida' ? '-' : ''}
                                     {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -257,12 +257,20 @@ export default function DashboardPage() {
                     </ChartContainer>
                 </CardContent>
                 <CardFooter className="flex-col gap-2 text-sm">
-                    <div className="flex w-full items-center gap-2 font-medium leading-none">
-                        Principal Categoria: Alimentação
-                    </div>
-                    <div className="flex w-full items-center gap-2 leading-none text-muted-foreground">
-                        Você gastou {foodSpending.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em alimentação este mês.
-                    </div>
+                    {topCategory.category !== 'Nenhuma' ? (
+                        <>
+                        <div className="flex w-full items-center gap-2 font-medium leading-none">
+                            Principal Categoria: {topCategory.category}
+                        </div>
+                        <div className="flex w-full items-center gap-2 leading-none text-muted-foreground">
+                            Você gastou {topCategory.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em {topCategory.category.toLowerCase()} este mês.
+                        </div>
+                        </>
+                    ) : (
+                        <div className="leading-none text-muted-foreground">
+                            Não há dados de gastos para este mês.
+                        </div>
+                    )}
                 </CardFooter>
             </Card>
             </div>

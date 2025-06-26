@@ -260,7 +260,7 @@ export default function TransactionsPage() {
                             <TableCell>
                                 <Badge variant="outline">{t.category}</Badge>
                             </TableCell>
-                            <TableCell>{format(t.date, "dd/MM/yyyy", { locale: ptBR })}</TableCell>
+                            <TableCell>{format(new Date(t.date), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
                             <TableCell>
                                 <Badge variant={t.type === 'entrada' ? 'default' : 'secondary'}>
                                     {t.type === 'entrada' ? 'Entrada' : 'Saída'}
