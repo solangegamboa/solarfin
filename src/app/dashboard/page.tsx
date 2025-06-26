@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Pie, PieChart, Cell } from "recharts";
@@ -69,21 +68,24 @@ export default function DashboardPage() {
     };
 
     const {
-        saldoAtual,
+        balancoMes,
+        receitaMes,
         gastosMes,
         recentTransactions,
         chartData,
         topCategory
     } = useMemo(() => {
-        const saldoAtual = transactions.reduce((acc, t) => {
-            return t.type === 'entrada' ? acc + t.amount : acc - t.amount;
-        }, 0);
-
         const monthlyTransactions = transactions.filter(t => isSameMonth(new Date(t.date), currentDate));
+
+        const receitaMes = monthlyTransactions
+            .filter(t => t.type === 'entrada')
+            .reduce((acc, t) => acc + t.amount, 0);
 
         const gastosMes = monthlyTransactions
             .filter(t => t.type === 'saida')
             .reduce((acc, t) => acc + t.amount, 0);
+
+        const balancoMes = receitaMes - gastosMes;
         
         const recentTransactions = monthlyTransactions.slice(0, 5);
 
@@ -111,14 +113,9 @@ export default function DashboardPage() {
             return top;
         }, { category: 'Nenhuma', value: 0, fill: '' });
 
-        return { saldoAtual, gastosMes, recentTransactions, chartData, topCategory };
+        return { balancoMes, receitaMes, gastosMes, recentTransactions, chartData, topCategory };
 
     }, [transactions, currentDate]);
-
-    // Mocked data for now, as it's not directly related to transactions list yet
-    const contasVencer = 250.75;
-    const progressoSaldo = 75;
-    const progressoGastos = 50;
 
     const formattedDate = format(currentDate, "MMMM 'de' yyyy", { locale: ptBR });
     const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
@@ -139,58 +136,47 @@ export default function DashboardPage() {
                 </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-            <Card>
-                <CardHeader className="pb-2">
-                <CardDescription>Saldo Atual</CardDescription>
-                <CardTitle className="text-4xl">{saldoAtual.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                <div className="text-xs text-muted-foreground">+25% do último mês</div>
-                </CardContent>
-                <CardFooter>
-                <Progress value={progressoSaldo} aria-label={`${progressoSaldo}% de aumento`} />
-                </CardFooter>
-            </Card>
-            <Card>
-                <CardHeader className="pb-2">
-                <CardDescription>Gastos deste Mês</CardDescription>
-                <CardTitle className="text-4xl">{gastosMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                <div className="text-xs text-muted-foreground">+10% do último mês</div>
-                </CardContent>
-                <CardFooter>
-                <Progress value={progressoGastos} aria-label={`${progressoGastos}% de aumento`} />
-                </CardFooter>
-            </Card>
-            <Card>
-                <CardHeader className="pb-2">
-                <CardDescription>Contas a Vencer</CardDescription>
-                <CardTitle className="text-4xl">{contasVencer.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                <div className="text-xs text-muted-foreground">3 contas vencendo esta semana</div>
-                </CardContent>
-                <CardFooter>
-                <Button size="sm" asChild>
-                    <Link href="/dashboard/recurring">Ver Contas</Link>
-                </Button>
-                </CardFooter>
-            </Card>
-            <Card>
-                <CardHeader className="pb-2">
-                <CardDescription>Sugestão da IA</CardDescription>
-                <CardTitle className="text-lg">Economize no Supermercado</CardTitle>
-                </CardHeader>
-                <CardContent>
-                <div className="text-xs text-muted-foreground">Você pode economizar até R$50/mês.</div>
-                </CardContent>
-                <CardFooter>
-                <Button size="sm" asChild>
-                    <Link href="/dashboard/savings-ai">Saiba Mais</Link>
-                </Button>
-                </CardFooter>
-            </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                    <CardDescription>Balanço do Mês</CardDescription>
+                    <CardTitle className="text-4xl">{balancoMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-xs text-muted-foreground">Receitas menos despesas do mês</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                    <CardDescription>Receitas do Mês</CardDescription>
+                    <CardTitle className="text-4xl">{receitaMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-xs text-muted-foreground">Total de entradas no mês</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                    <CardDescription>Gastos do Mês</CardDescription>
+                    <CardTitle className="text-4xl">{gastosMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-xs text-muted-foreground">Total de saídas no mês</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                    <CardDescription>Sugestão da IA</CardDescription>
+                    <CardTitle className="text-lg">Economize no Supermercado</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-xs text-muted-foreground">Você pode economizar até R$50/mês.</div>
+                    </CardContent>
+                    <CardFooter>
+                    <Button size="sm" asChild>
+                        <Link href="/dashboard/savings-ai">Saiba Mais</Link>
+                    </Button>
+                    </CardFooter>
+                </Card>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <Card className="lg:col-span-4">
