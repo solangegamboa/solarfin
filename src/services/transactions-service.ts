@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, Timestamp, doc, deleteDoc } from 'firebase/firestore';
 import type { Transaction } from '@/contexts/transactions-context';
 
 type FirestoreTransaction = Omit<Transaction, 'id' | 'date'> & {
@@ -48,4 +48,10 @@ export const getTransactionsFromFirestore = async (userId: string): Promise<Tran
     });
 
     return transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+};
+
+export const deleteTransactionFromFirestore = async (transactionId: string): Promise<void> => {
+    if (!transactionId) throw new Error("ID da transação não fornecido.");
+    const transactionRef = doc(db, 'transactions', transactionId);
+    await deleteDoc(transactionRef);
 };

@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, PlusCircle } from "lucide-react";
+import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   Form,
   FormControl,
@@ -49,6 +59,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useTransactions } from "@/contexts/transactions-context";
+import type { Transaction } from "@/contexts/transactions-context";
 
 const transactionSchema = z.object({
   description: z.string().min(2, { message: "A descrição deve ter pelo menos 2 caracteres." }),
@@ -67,7 +78,9 @@ type TransactionFormValues = z.infer<typeof transactionSchema>;
 export default function TransactionsPage() {
   const [open, setOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { transactions, addTransaction, loading } = useTransactions();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const { transactions, addTransaction, deleteTransaction, loading } = useTransactions();
   const { toast } = useToast();
 
   const form = useForm<TransactionFormValues>({
@@ -101,6 +114,28 @@ export default function TransactionsPage() {
         setIsSaving(false);
     }
   };
+
+  const handleDelete = async () => {
+    if (!transactionToDelete) return;
+    setIsDeleting(true);
+    try {
+        await deleteTransaction(transactionToDelete.id);
+        toast({
+            title: "Transação Excluída",
+            description: `Sua transação "${transactionToDelete.description}" foi excluída.`,
+        });
+        setTransactionToDelete(null);
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Erro ao Excluir",
+            description: "Não foi possível excluir a transação. Tente novamente.",
+        });
+    } finally {
+        setIsDeleting(false);
+    }
+  };
+
 
   return (
     <>
@@ -263,12 +298,13 @@ export default function TransactionsPage() {
                     <TableHead>Data</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="w-[100px] text-center">Ações</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {loading ? (
+                    {loading && !isSaving ? (
                         <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center">
+                            <TableCell colSpan={6} className="h-24 text-center">
                                 Carregando transações...
                             </TableCell>
                         </TableRow>
@@ -289,11 +325,21 @@ export default function TransactionsPage() {
                                 {t.type === 'saida' ? '-' : ''}
                                 {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </TableCell>
+                            <TableCell className="text-center">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => setTransactionToDelete(t)}
+                                    disabled={isDeleting}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </TableCell>
                         </TableRow>
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center">
+                            <TableCell colSpan={6} className="h-24 text-center">
                                 Nenhuma transação encontrada.
                             </TableCell>
                         </TableRow>
@@ -302,6 +348,23 @@ export default function TransactionsPage() {
             </Table>
         </CardContent>
       </Card>
+      
+      <AlertDialog open={!!transactionToDelete} onOpenChange={(open) => !open && setTransactionToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+                Esta ação não pode ser desfeita. Isso excluirá permanentemente a transação <span className="font-semibold">"{transactionToDelete?.description}"</span>.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting} onClick={() => setTransactionToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={isDeleting} onClick={handleDelete}>
+                {isDeleting ? "Excluindo..." : "Confirmar"}
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

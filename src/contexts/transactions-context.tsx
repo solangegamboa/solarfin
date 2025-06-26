@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { getTransactionsFromFirestore, addTransactionToFirestore } from '@/services/transactions-service';
+import { getTransactionsFromFirestore, addTransactionToFirestore, deleteTransactionFromFirestore } from '@/services/transactions-service';
 
 export type Transaction = {
     id: string;
@@ -16,6 +16,7 @@ export type Transaction = {
 interface TransactionsContextType {
     transactions: Transaction[];
     addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
+    deleteTransaction: (transactionId: string) => Promise<void>;
     loading: boolean;
 }
 
@@ -48,16 +49,24 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
         }
         setLoading(true);
         const newTransaction = await addTransactionToFirestore(transaction, user.uid);
-        // Add new transaction to the beginning of the list and re-sort
         setTransactions(prev => [newTransaction, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
         setLoading(false);
+    }, [user]);
+
+    const deleteTransaction = useCallback(async (transactionId: string) => {
+        if (!user) {
+            throw new Error('Usuário não autenticado para deletar transação');
+        }
+        await deleteTransactionFromFirestore(transactionId);
+        setTransactions(prev => prev.filter(t => t.id !== transactionId));
     }, [user]);
     
     const value = useMemo(() => ({
         transactions,
         addTransaction,
+        deleteTransaction,
         loading,
-    }), [transactions, loading, addTransaction]);
+    }), [transactions, loading, addTransaction, deleteTransaction]);
 
     return (
         <TransactionsContext.Provider value={value}>
