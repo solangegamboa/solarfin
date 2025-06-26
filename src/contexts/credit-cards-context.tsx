@@ -36,9 +36,15 @@ export const CreditCardsProvider = ({ children }: { children: ReactNode }) => {
     const fetchCards = useCallback(async () => {
         if (user) {
             setLoading(true);
-            const userCards = await getCreditCardsFromFirestore(user.uid);
-            setCards(userCards);
-            setLoading(false);
+            try {
+                const userCards = await getCreditCardsFromFirestore(user.uid);
+                setCards(userCards);
+            } catch (error) {
+                console.error("Failed to fetch credit cards:", error);
+                setCards([]);
+            } finally {
+                setLoading(false);
+            }
         } else {
             setCards([]);
             setLoading(false);
@@ -52,22 +58,34 @@ export const CreditCardsProvider = ({ children }: { children: ReactNode }) => {
     const addCard = useCallback(async (cardData: Omit<CreditCard, 'id' | 'userId' | 'isDefault'>) => {
         if (!user) throw new Error('Usuário não autenticado.');
         
-        const isDefault = cards.length === 0;
-        const newCardData = { ...cardData, isDefault, userId: user.uid };
+        const isTheFirstCard = cards.length === 0;
+        const newCardData = { ...cardData, isDefault: isTheFirstCard, userId: user.uid };
 
-        const newCard = await addCreditCardToFirestore(newCardData, user.uid);
+        const newCard = await addCreditCardToFirestore(newCardData);
         
-        if (isDefault) {
+        // If it's the first card, we need to ensure it's marked as default in Firestore.
+        // The `isDefault` flag is already set on `newCardData`, but `setDefault...` ensures consistency.
+        if (isTheFirstCard) {
             await setDefaultCreditCardInFirestore(newCard.id, [newCard]);
         }
-        await fetchCards();
+        await fetchCards(); // Refetch all cards to update the UI
     }, [user, cards, fetchCards]);
 
     const deleteCard = useCallback(async (cardId: string) => {
         if (!user) throw new Error('Usuário não autenticado.');
+        const cardToDelete = cards.find(c => c.id === cardId);
+        
         await deleteCreditCardFromFirestore(cardId);
+        
+        const remainingCards = cards.filter(c => c.id !== cardId);
+
+        // If the deleted card was the default, make the first remaining card the new default
+        if (cardToDelete?.isDefault && remainingCards.length > 0) {
+            await setDefaultCreditCardInFirestore(remainingCards[0].id, remainingCards);
+        }
+
         await fetchCards();
-    }, [user, fetchCards]);
+    }, [user, fetchCards, cards]);
 
     const setDefaultCard = useCallback(async (cardId: string) => {
         if (!user) throw new Error('Usuário não autenticado.');

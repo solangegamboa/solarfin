@@ -1,12 +1,12 @@
 'use client';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, query, where, doc, deleteDoc, writeBatch, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import type { CreditCard } from '@/contexts/credit-cards-context';
 
-export const addCreditCardToFirestore = async (card: Omit<CreditCard, 'id'>, userId: string): Promise<CreditCard> => {
-    if (!userId) throw new Error("O usuário não está autenticado.");
+export const addCreditCardToFirestore = async (card: Omit<CreditCard, 'id'>): Promise<CreditCard> => {
+    if (!card.userId) throw new Error("O usuário não está autenticado.");
 
-    const docRef = await addDoc(collection(db, 'creditCards'), { ...card, userId });
+    const docRef = await addDoc(collection(db, 'creditCards'), card);
 
     return { ...card, id: docRef.id };
 };
@@ -38,11 +38,15 @@ export const deleteCreditCardFromFirestore = async (cardId: string): Promise<voi
 };
 
 export const setDefaultCreditCardInFirestore = async (cardIdToSetDefault: string, allUserCards: CreditCard[]): Promise<void> => {
+    if (allUserCards.length === 0) return;
+
     const batch = writeBatch(db);
 
+    // This handles both setting a new default and updating the old one.
     allUserCards.forEach(card => {
         const cardRef = doc(db, 'creditCards', card.id);
-        batch.update(cardRef, { isDefault: card.id === cardIdToSetDefault });
+        const isDefault = card.id === cardIdToSetDefault;
+        batch.update(cardRef, { isDefault });
     });
 
     await batch.commit();

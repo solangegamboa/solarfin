@@ -48,11 +48,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const cardSchema = z.object({
   name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
-  closingDay: z.coerce.number().min(1).max(31, "Deve ser um dia do mês válido."),
-  dueDay: z.coerce.number().min(1).max(31, "Deve ser um dia do mês válido."),
+  closingDay: z.coerce.number().min(1, "O dia deve ser maior que 0.").max(31, "Deve ser um dia do mês válido."),
+  dueDay: z.coerce.number().min(1, "O dia deve ser maior que 0.").max(31, "Deve ser um dia do mês válido."),
 });
 
 type CardFormValues = z.infer<typeof cardSchema>;
+
+const defaultFormValues: CardFormValues = {
+    name: "",
+    // We use `any` here to allow empty strings in the form, 
+    // which z.coerce will handle during validation.
+    closingDay: '' as any, 
+    dueDay: '' as any,
+};
 
 export default function CreditCardsPage() {
   const [open, setOpen] = useState(false);
@@ -64,6 +72,7 @@ export default function CreditCardsPage() {
 
   const form = useForm<CardFormValues>({
     resolver: zodResolver(cardSchema),
+    defaultValues: defaultFormValues,
   });
 
   const onSubmit = async (data: CardFormValues) => {
@@ -71,9 +80,10 @@ export default function CreditCardsPage() {
     try {
       await addCard(data);
       toast({ title: "Cartão Adicionado", description: "Seu novo cartão de crédito foi salvo." });
-      form.reset({ name: "", closingDay: undefined, dueDay: undefined });
+      form.reset(defaultFormValues);
       setOpen(false);
     } catch (error) {
+      console.error("Failed to save card:", error);
       toast({ variant: "destructive", title: "Erro ao Salvar", description: "Não foi possível salvar o cartão." });
     } finally {
       setIsSaving(false);
