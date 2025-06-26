@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -57,7 +58,7 @@ const chartConfig = {
 
 export default function DashboardPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
-    const { transactions } = useTransactions();
+    const { transactions, loading } = useTransactions();
 
     const handlePreviousMonth = () => {
         setCurrentDate(subMonths(currentDate, 1));
@@ -106,12 +107,12 @@ export default function DashboardPage() {
             fill: (chartConfig[category as keyof typeof chartConfig] as any)?.color || (chartConfig["Outros"] as any).color,
         }));
         
-        const topCategory = chartData.reduce((top, current) => {
+        const topCategory = chartData.length > 0 ? chartData.reduce((top, current) => {
             if (current.value > top.value) {
                 return current;
             }
             return top;
-        }, { category: 'Nenhuma', value: 0, fill: '' });
+        }) : { category: 'Nenhuma', value: 0, fill: '' };
 
         return { balancoMes, receitaMes, gastosMes, recentTransactions, chartData, topCategory };
 
@@ -139,7 +140,7 @@ export default function DashboardPage() {
                 <Card>
                     <CardHeader className="pb-2">
                     <CardDescription>Balanço do Mês</CardDescription>
-                    <CardTitle className="text-4xl">{balancoMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>
+                    {loading ? <Skeleton className="h-10 w-3/4" /> : <CardTitle className="text-4xl">{balancoMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>}
                     </CardHeader>
                     <CardContent>
                     <div className="text-xs text-muted-foreground">Receitas menos despesas do mês</div>
@@ -148,7 +149,7 @@ export default function DashboardPage() {
                 <Card>
                     <CardHeader className="pb-2">
                     <CardDescription>Receitas do Mês</CardDescription>
-                    <CardTitle className="text-4xl">{receitaMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>
+                    {loading ? <Skeleton className="h-10 w-3/4" /> : <CardTitle className="text-4xl">{receitaMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>}
                     </CardHeader>
                     <CardContent>
                     <div className="text-xs text-muted-foreground">Total de entradas no mês</div>
@@ -157,7 +158,7 @@ export default function DashboardPage() {
                 <Card>
                     <CardHeader className="pb-2">
                     <CardDescription>Gastos do Mês</CardDescription>
-                    <CardTitle className="text-4xl">{gastosMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>
+                    {loading ? <Skeleton className="h-10 w-3/4" /> : <CardTitle className="text-4xl">{gastosMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>}
                     </CardHeader>
                     <CardContent>
                     <div className="text-xs text-muted-foreground">Total de saídas no mês</div>
@@ -195,7 +196,13 @@ export default function DashboardPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {recentTransactions.length > 0 ? (
+                        {loading ? (
+                            <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center">
+                                    Carregando...
+                                </TableCell>
+                            </TableRow>
+                        ) : recentTransactions.length > 0 ? (
                             recentTransactions.map((t) => (
                                 <TableRow key={t.id}>
                                     <TableCell className="font-medium">{t.description}</TableCell>
@@ -231,19 +238,34 @@ export default function DashboardPage() {
                 <CardDescription>Sua distribuição de gastos para este mês.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center">
-                    <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px]">
-                        <PieChart>
-                        <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                        <Pie data={chartData} dataKey="value" nameKey="category" innerRadius={60} strokeWidth={5}>
-                            {chartData.map((entry) => (
-                                <Cell key={`cell-${entry.category}`} fill={entry.fill} />
-                            ))}
-                        </Pie>
-                        </PieChart>
-                    </ChartContainer>
+                    {loading ? (
+                        <div className="flex justify-center items-center h-[250px]">
+                           <Skeleton className="h-[250px] w-[250px] rounded-full" />
+                        </div>
+                    ) : chartData.length > 0 ? (
+                        <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px]">
+                            <PieChart>
+                                <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                                <Pie data={chartData} dataKey="value" nameKey="category" innerRadius={60} strokeWidth={5}>
+                                    {chartData.map((entry) => (
+                                        <Cell key={`cell-${entry.category}`} fill={entry.fill} />
+                                    ))}
+                                </Pie>
+                            </PieChart>
+                        </ChartContainer>
+                    ) : (
+                        <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                            Sem dados de gastos.
+                        </div>
+                    )}
                 </CardContent>
                 <CardFooter className="flex-col gap-2 text-sm">
-                    {topCategory.category !== 'Nenhuma' ? (
+                    {loading ? (
+                       <div className="w-full space-y-2">
+                           <Skeleton className="h-4 w-3/4" />
+                           <Skeleton className="h-4 w-1/2" />
+                       </div>
+                    ) : topCategory.category !== 'Nenhuma' && topCategory.value > 0 ? (
                         <>
                         <div className="flex w-full items-center gap-2 font-medium leading-none">
                             Principal Categoria: {topCategory.category}

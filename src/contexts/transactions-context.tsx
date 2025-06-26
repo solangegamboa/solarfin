@@ -1,6 +1,8 @@
 'use client';
 
-import React, { createContext, useState, useContext, ReactNode, useMemo } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { getTransactionsFromFirestore, addTransactionToFirestore } from '@/services/transactions-service';
 
 export type Transaction = {
     id: string;
@@ -11,48 +13,51 @@ export type Transaction = {
     category: string;
 }
 
-const now = new Date();
-const currentMonth = now.getMonth();
-const currentYear = now.getFullYear();
-
-const initialTransactions: Transaction[] = [
-    // Current Month
-    { id: '1', description: 'Salário', amount: 5000, date: new Date(currentYear, currentMonth, 5), type: 'entrada', category: 'Renda' },
-    { id: '2', description: 'Compras no Supermercado', amount: 350.75, date: new Date(currentYear, currentMonth, 10), type: 'saida', category: 'Alimentação' },
-    { id: '3', description: 'Conta de Luz', amount: 120.00, date: new Date(currentYear, currentMonth, 15), type: 'saida', category: 'Moradia' },
-    { id: '4', description: 'Gasolina', amount: 150.00, date: new Date(currentYear, currentMonth, 3), type: 'saida', category: 'Transporte' },
-    { id: '5', description: 'Cinema', amount: 60.00, date: new Date(currentYear, currentMonth, 12), type: 'saida', category: 'Lazer' },
-
-    // Last Month
-    { id: '6', description: 'Salário', amount: 5000, date: new Date(currentYear, currentMonth - 1, 5), type: 'entrada', category: 'Renda' },
-    { id: '7', description: 'Aluguel', amount: 1500, date: new Date(currentYear, currentMonth - 1, 1), type: 'saida', category: 'Moradia' },
-    { id: '8', description: 'Internet', amount: 99.90, date: new Date(currentYear, currentMonth - 1, 10), type: 'saida', category: 'Moradia' },
-    { id: '9', description: 'Venda de item usado', amount: 200, date: new Date(currentYear, currentMonth - 1, 20), type: 'entrada', category: 'Outros' },
-];
-
-
 interface TransactionsContextType {
     transactions: Transaction[];
-    addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+    addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
+    loading: boolean;
 }
 
 export const TransactionsContext = createContext<TransactionsContextType | undefined>(undefined);
 
 export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
-    const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
 
-    const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
-        const newTransaction = {
-            id: (transactions.length + 1).toString(),
-            ...transaction
+    useEffect(() => {
+        const fetchTransactions = async () => {
+            if (user) {
+                setLoading(true);
+                const userTransactions = await getTransactionsFromFirestore(user.uid);
+                setTransactions(userTransactions);
+                setLoading(false);
+            } else if (!user) {
+                setTransactions([]);
+                setLoading(false);
+            }
         };
-        setTransactions(prev => [newTransaction, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
-    };
 
+        fetchTransactions();
+    }, [user]);
+
+    const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
+        if (!user) {
+            throw new Error('Usuário não autenticado para adicionar transação');
+        }
+        setLoading(true);
+        const newTransaction = await addTransactionToFirestore(transaction, user.uid);
+        // Add new transaction to the beginning of the list and re-sort
+        setTransactions(prev => [newTransaction, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
+        setLoading(false);
+    };
+    
     const value = useMemo(() => ({
         transactions,
-        addTransaction
-    }), [transactions]);
+        addTransaction,
+        loading,
+    }), [transactions, loading]);
 
     return (
         <TransactionsContext.Provider value={value}>
@@ -64,7 +69,7 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
 export const useTransactions = () => {
     const context = useContext(TransactionsContext);
     if (context === undefined) {
-        throw new Error('useTransactions must be used within a TransactionsProvider');
+        throw new Error('useTransactions deve ser usado dentro de um TransactionsProvider');
     }
     return context;
 };

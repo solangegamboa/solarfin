@@ -66,7 +66,7 @@ type TransactionFormValues = z.infer<typeof transactionSchema>;
 
 export default function TransactionsPage() {
   const [open, setOpen] = useState(false);
-  const { transactions, addTransaction } = useTransactions();
+  const { transactions, addTransaction, loading } = useTransactions();
   const { toast } = useToast();
 
   const form = useForm<TransactionFormValues>({
@@ -80,15 +80,22 @@ export default function TransactionsPage() {
     }
   });
 
-  const onSubmit = (data: TransactionFormValues) => {
-    addTransaction(data);
-
-    toast({
-      title: "Transação Adicionada",
-      description: `Sua transação "${data.description}" foi salva.`,
-    });
-    form.reset();
-    setOpen(false);
+  const onSubmit = async (data: TransactionFormValues) => {
+    try {
+      await addTransaction(data);
+      toast({
+        title: "Transação Adicionada",
+        description: `Sua transação "${data.description}" foi salva.`,
+      });
+      form.reset();
+      setOpen(false);
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Erro ao Salvar",
+        description: "Não foi possível salvar a transação. Tente novamente.",
+      });
+    }
   };
 
   return (
@@ -253,7 +260,13 @@ export default function TransactionsPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {transactions.length > 0 ? (
+                    {loading ? (
+                        <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center">
+                                Carregando transações...
+                            </TableCell>
+                        </TableRow>
+                    ) : transactions.length > 0 ? (
                         transactions.map((t) => (
                         <TableRow key={t.id}>
                             <TableCell className="font-medium">{t.description}</TableCell>
