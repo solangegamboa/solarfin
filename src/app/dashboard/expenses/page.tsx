@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -17,6 +18,7 @@ import type { Transaction } from "@/contexts/transactions-context";
 import { AddTransactionButton } from "@/components/add-transaction-button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 
 export default function TransactionsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -30,10 +32,19 @@ export default function TransactionsPage() {
   const { cards } = useCreditCards();
   const { toast } = useToast();
 
+  const categories = useMemo(() => {
+    const allCategories = transactions.map(t => t.category);
+    const uniqueCategories = [...new Set(allCategories)].filter(Boolean);
+    return uniqueCategories.map(category => ({
+      value: category,
+      label: category
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [transactions]);
+
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       const descriptionMatch = descriptionFilter ? t.description.toLowerCase().includes(descriptionFilter.toLowerCase()) : true;
-      const categoryMatch = categoryFilter ? t.category.toLowerCase().includes(categoryFilter.toLowerCase()) : true;
+      const categoryMatch = categoryFilter ? t.category.toLowerCase() === categoryFilter.toLowerCase() : true;
       
       let paymentMethodMatch = true;
       if (paymentMethodFilter !== 'all') {
@@ -97,12 +108,16 @@ export default function TransactionsPage() {
                 onChange={(e) => setDescriptionFilter(e.target.value)}
                 className="max-w-sm"
               />
-              <Input
-                placeholder="Filtrar por categoria..."
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="max-w-sm"
-              />
+              <div className="max-w-sm w-full">
+                <Combobox
+                    options={categories}
+                    value={categoryFilter}
+                    onChange={setCategoryFilter}
+                    placeholder="Filtrar por categoria..."
+                    searchPlaceholder="Buscar categoria..."
+                    emptyMessage="Nenhuma categoria encontrada."
+                />
+              </div>
               <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
                 <SelectTrigger className="w-full md:w-[200px]">
                   <SelectValue placeholder="Tipo de Pagamento" />
