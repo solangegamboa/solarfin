@@ -1,14 +1,17 @@
+
 "use client";
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { PlusCircle, Trash2, Landmark, CalendarIcon } from "lucide-react";
+import { PlusCircle, Trash2, Landmark, CalendarIcon, DollarSign } from "lucide-react";
 import { format, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { useLoans } from "@/hooks/use-loans";
+import type { Loan } from "@/contexts/loans-context";
+import { useTransactions } from "@/contexts/transactions-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,8 +38,11 @@ export default function LoansPage() {
   const [open, setOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [loanToDelete, setLoanToDelete] = useState<string | null>(null);
+  const [loanToPay, setLoanToPay] = useState<Loan | null>(null);
+  const [isPaying, setIsPaying] = useState(false);
 
   const { loans, addLoan, deleteLoan, loading } = useLoans();
+  const { addTransaction } = useTransactions();
   const { toast } = useToast();
 
   const form = useForm<LoanFormValues>({
@@ -83,6 +89,42 @@ export default function LoansPage() {
   const calculatePaidInstallments = (contractDate: Date) => {
     const monthsPassed = differenceInMonths(new Date(), new Date(contractDate));
     return monthsPassed < 0 ? 0 : monthsPassed + 1;
+  };
+
+  const handleRegisterPayment = async () => {
+    if (!loanToPay) return;
+    setIsPaying(true);
+    try {
+        const currentInstallment = calculatePaidInstallments(loanToPay.contractDate);
+
+        if(currentInstallment > loanToPay.totalInstallments) {
+            toast({
+                variant: "destructive",
+                title: "Empréstimo Finalizado",
+                description: "Este empréstimo já foi totalmente pago."
+            });
+            setLoanToPay(null);
+            setIsPaying(false);
+            return;
+        }
+
+        const transactionPayload = {
+            description: `Pagamento Parcela ${currentInstallment} de ${loanToPay.totalInstallments} do empréstimo ${loanToPay.institutionName}`,
+            amount: loanToPay.installmentAmount,
+            date: new Date(),
+            category: "Empréstimos",
+            type: "saida" as const,
+            paymentMethod: "money" as const,
+        };
+        await addTransaction(transactionPayload);
+        toast({ title: "Pagamento Registrado", description: "A transação de pagamento foi adicionada com sucesso." });
+        setLoanToPay(null);
+    } catch (error) {
+        console.error("Failed to register payment:", error);
+        toast({ variant: "destructive", title: "Erro ao Registrar", description: "Não foi possível registrar o pagamento." });
+    } finally {
+        setIsPaying(false);
+    }
   };
 
   return (
@@ -145,8 +187,8 @@ export default function LoansPage() {
           <div className="space-y-4">
             {loading ? (
               <>
-                <Skeleton className="h-24 w-full rounded-lg" />
-                <Skeleton className="h-24 w-full rounded-lg" />
+                <Skeleton className="h-28 w-full rounded-lg" />
+                <Skeleton className="h-28 w-full rounded-lg" />
               </>
             ) : loans.length > 0 ? (
               loans.map((loan) => {
@@ -176,6 +218,12 @@ export default function LoansPage() {
                             </div>
                             <Progress value={progress} />
                         </div>
+                         <div className="flex justify-end pt-2">
+                            <Button size="sm" onClick={() => setLoanToPay(loan)} disabled={progress >= 100}>
+                                <DollarSign className="mr-2 h-4 w-4" />
+                                Registrar Pagamento
+                            </Button>
+                        </div>
                     </div>
                 )
               })
@@ -200,6 +248,27 @@ export default function LoansPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {loanToPay && (
+        <AlertDialog open={!!loanToPay} onOpenChange={(open) => !open && setLoanToPay(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Pagamento</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Você confirma o pagamento de <span className="font-bold">{loanToPay.installmentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    {' '}referente à parcela <span className="font-bold">{calculatePaidInstallments(loanToPay.contractDate)}</span> do empréstimo
+                    {' '}<span className="font-bold">{loanToPay.institutionName}</span>? Esta ação irá criar uma nova transação de saída.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel disabled={isPaying} onClick={() => setLoanToPay(null)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction disabled={isPaying} onClick={handleRegisterPayment}>
+                    {isPaying ? "Registrando..." : "Confirmar"}
+                </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 }
