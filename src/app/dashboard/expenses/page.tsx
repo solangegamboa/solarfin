@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { format } from "date-fns";
+import { useState, useMemo } from "react";
+import { format, isSameMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Trash2, CreditCard } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,14 +15,46 @@ import { useTransactions } from "@/contexts/transactions-context";
 import { useCreditCards } from "@/hooks/use-credit-cards";
 import type { Transaction } from "@/contexts/transactions-context";
 import { AddTransactionButton } from "@/components/add-transaction-button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function TransactionsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   
+  const [descriptionFilter, setDescriptionFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
+  
   const { transactions, deleteTransaction, loading } = useTransactions();
   const { cards } = useCreditCards();
   const { toast } = useToast();
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(t => {
+      const descriptionMatch = descriptionFilter ? t.description.toLowerCase().includes(descriptionFilter.toLowerCase()) : true;
+      const categoryMatch = categoryFilter ? t.category.toLowerCase().includes(categoryFilter.toLowerCase()) : true;
+      
+      let paymentMethodMatch = true;
+      if (paymentMethodFilter !== 'all') {
+          if (paymentMethodFilter === 'money') {
+            paymentMethodMatch = t.paymentMethod === 'money' || !t.paymentMethod;
+          } else {
+            paymentMethodMatch = t.paymentMethod === paymentMethodFilter;
+          }
+      }
+      
+      return descriptionMatch && categoryMatch && paymentMethodMatch;
+    });
+  }, [transactions, descriptionFilter, categoryFilter, paymentMethodFilter]);
+
+  const filteredMonthTotal = useMemo(() => {
+    const today = new Date();
+    return filteredTransactions
+      .filter(t => t.type === 'saida' && isSameMonth(new Date(t.date), today))
+      .reduce((acc, t) => acc + t.amount, 0);
+  }, [filteredTransactions]);
+
 
   const handleDelete = async () => {
     if (!transactionToDelete) return;
@@ -53,11 +85,35 @@ export default function TransactionsPage() {
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
                 <CardTitle>Transações</CardTitle>
-                <CardDescription>Gerencie suas transações de entrada e saída.</CardDescription>
+                <CardDescription>Gerencie e filtre suas transações de entrada e saída.</CardDescription>
             </div>
             <AddTransactionButton />
         </CardHeader>
         <CardContent>
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <Input
+                placeholder="Filtrar por descrição..."
+                value={descriptionFilter}
+                onChange={(e) => setDescriptionFilter(e.target.value)}
+                className="max-w-sm"
+              />
+              <Input
+                placeholder="Filtrar por categoria..."
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="max-w-sm"
+              />
+              <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+                <SelectTrigger className="w-full md:w-[200px]">
+                  <SelectValue placeholder="Tipo de Pagamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos Pagamentos</SelectItem>
+                  <SelectItem value="money">Dinheiro/Débito</SelectItem>
+                  <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -72,8 +128,8 @@ export default function TransactionsPage() {
                 <TableBody>
                     {loading ? (
                         <TableRow><TableCell colSpan={6} className="h-24 text-center">Carregando transações...</TableCell></TableRow>
-                    ) : transactions.length > 0 ? (
-                        transactions.map((t) => (
+                    ) : filteredTransactions.length > 0 ? (
+                        filteredTransactions.map((t) => (
                         <TableRow key={t.id}>
                             <TableCell className="font-medium">{t.description}</TableCell>
                             <TableCell><Badge variant="outline">{t.category}</Badge></TableCell>
@@ -85,7 +141,7 @@ export default function TransactionsPage() {
                                     <Badge variant={t.type === 'entrada' ? 'default' : 'secondary'}>{t.type === 'entrada' ? 'Entrada' : 'Saída'}</Badge>
                                 )}
                             </TableCell>
-                            <TableCell className={`text-right font-medium ${t.type === 'entrada' ? 'text-green-500' : 'text-red-500'}`}>
+                            <TableCell className={`text-right font-medium ${t.type === 'entrada' ? 'text-primary' : 'text-destructive'}`}>
                                 {t.type === 'saida' ? '-' : ''}{t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </TableCell>
                             <TableCell className="text-center">
@@ -94,11 +150,19 @@ export default function TransactionsPage() {
                         </TableRow>
                         ))
                     ) : (
-                        <TableRow><TableCell colSpan={6} className="h-24 text-center">Nenhuma transação encontrada.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={6} className="h-24 text-center">Nenhuma transação encontrada com os filtros atuais.</TableCell></TableRow>
                     )}
                 </TableBody>
             </Table>
         </CardContent>
+        <CardFooter className="justify-end border-t pt-6">
+            <div className="text-lg font-semibold">
+                Gasto Total (Mês Atual, Filtrado):
+                <span className="text-destructive ml-2">
+                    -{filteredMonthTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+            </div>
+        </CardFooter>
       </Card>
       
       <AlertDialog open={!!transactionToDelete} onOpenChange={(open) => !open && setTransactionToDelete(null)}>
