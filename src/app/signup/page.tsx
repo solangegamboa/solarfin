@@ -30,6 +30,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
+export const dynamic = 'force-dynamic';
+
 const signupSchema = z
   .object({
     email: z.string().email({ message: 'Endereço de e-mail inválido.' }),
