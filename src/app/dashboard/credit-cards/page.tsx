@@ -59,6 +59,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const cardSchema = z.object({
   name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
@@ -311,77 +312,79 @@ export default function CreditCardsPage() {
       </AlertDialog>
 
       <Sheet open={!!selectedCard} onOpenChange={(open) => !open && setSelectedCard(null)}>
-        <SheetContent className="sm:max-w-2xl w-full p-0">
+        <SheetContent className="sm:max-w-2xl w-full flex flex-col p-0">
           {selectedCard && (
             <>
-            <SheetHeader className="p-6">
+            <SheetHeader className="p-6 border-b">
                 <SheetTitle>Detalhes do Cartão: {selectedCard.name}</SheetTitle>
                 <SheetDescription>
                     Fatura atual com vencimento em {dueDate} no valor de <span className="font-semibold text-foreground">{billTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>.
                 </SheetDescription>
             </SheetHeader>
-            <div className="py-4 px-6 space-y-6">
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Fatura Atual ({format(new Date(), "MMMM", { locale: ptBR })})</h3>
-                  <div className="rounded-lg border">
+            <ScrollArea className="flex-1">
+              <div className="p-6 space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Fatura Atual ({format(new Date(), "MMMM", { locale: ptBR })})</h3>
+                    <div className="rounded-lg border">
+                        <Table>
+                          <TableHeader>
+                              <TableRow>
+                              <TableHead>Descrição</TableHead>
+                              <TableHead>Data da Compra</TableHead>
+                              <TableHead className="text-center">Parcela</TableHead>
+                              <TableHead className="text-right">Valor</TableHead>
+                              </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                              {transactionsLoading ? <TableRow><TableCell colSpan={4} className="h-24 text-center">Carregando...</TableCell></TableRow> :
+                              currentBill.length > 0 ? (
+                              currentBill.map((item, index) => (
+                                  <TableRow key={index}>
+                                  <TableCell className="font-medium">{item.description}</TableCell>
+                                  <TableCell>{format(item.date, "dd/MM/yyyy")}</TableCell>
+                                  <TableCell className="text-center"><Badge variant="outline">{item.installment}</Badge></TableCell>
+                                  <TableCell className="text-right">{item.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                                  </TableRow>
+                              ))
+                              ) : (
+                              <TableRow><TableCell colSpan={4} className="h-24 text-center">Nenhuma despesa na fatura atual.</TableCell></TableRow>
+                              )}
+                          </TableBody>
+                        </Table>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Próximas Parcelas</h3>
+                    <div className="rounded-lg border">
                       <Table>
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead>Descrição</TableHead>
-                            <TableHead>Data da Compra</TableHead>
-                            <TableHead className="text-center">Parcela</TableHead>
-                            <TableHead className="text-right">Valor</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {transactionsLoading ? <TableRow><TableCell colSpan={4} className="h-24 text-center">Carregando...</TableCell></TableRow> :
-                            currentBill.length > 0 ? (
-                            currentBill.map((item, index) => (
-                                <TableRow key={index}>
-                                <TableCell className="font-medium">{item.description}</TableCell>
-                                <TableCell>{format(item.date, "dd/MM/yyyy")}</TableCell>
-                                <TableCell className="text-center"><Badge variant="outline">{item.installment}</Badge></TableCell>
-                                <TableCell className="text-right">{item.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                                </TableRow>
-                            ))
-                            ) : (
-                            <TableRow><TableCell colSpan={4} className="h-24 text-center">Nenhuma despesa na fatura atual.</TableCell></TableRow>
-                            )}
-                        </TableBody>
+                          <TableHeader>
+                              <TableRow>
+                              <TableHead>Descrição</TableHead>
+                              <TableHead>Fatura de</TableHead>
+                              <TableHead className="text-center">Parcela</TableHead>
+                              <TableHead className="text-right">Valor</TableHead>
+                              </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                               {transactionsLoading ? <TableRow><TableCell colSpan={4} className="h-24 text-center">Carregando...</TableCell></TableRow> :
+                              futureInstallments.length > 0 ? (
+                              futureInstallments.map((item, index) => (
+                                  <TableRow key={index}>
+                                  <TableCell className="font-medium">{item.description}</TableCell>
+                                  <TableCell>{format(item.billDate, "MMMM/yy", {locale: ptBR})}</TableCell>
+                                  <TableCell className="text-center"><Badge variant="outline">{item.installment}</Badge></TableCell>
+                                  <TableCell className="text-right">{item.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                                  </TableRow>
+                              ))
+                              ) : (
+                              <TableRow><TableCell colSpan={4} className="h-24 text-center">Nenhuma parcela futura.</TableCell></TableRow>
+                              )}
+                          </TableBody>
                       </Table>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Próximas Parcelas</h3>
-                  <div className="rounded-lg border max-h-96 overflow-y-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead>Descrição</TableHead>
-                            <TableHead>Fatura de</TableHead>
-                            <TableHead className="text-center">Parcela</TableHead>
-                            <TableHead className="text-right">Valor</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                             {transactionsLoading ? <TableRow><TableCell colSpan={4} className="h-24 text-center">Carregando...</TableCell></TableRow> :
-                            futureInstallments.length > 0 ? (
-                            futureInstallments.map((item, index) => (
-                                <TableRow key={index}>
-                                <TableCell className="font-medium">{item.description}</TableCell>
-                                <TableCell>{format(item.billDate, "MMMM/yy", {locale: ptBR})}</TableCell>
-                                <TableCell className="text-center"><Badge variant="outline">{item.installment}</Badge></TableCell>
-                                <TableCell className="text-right">{item.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                                </TableRow>
-                            ))
-                            ) : (
-                            <TableRow><TableCell colSpan={4} className="h-24 text-center">Nenhuma parcela futura.</TableCell></TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                  </div>
-                </div>
-            </div>
+              </div>
+            </ScrollArea>
             </>
           )}
         </SheetContent>
