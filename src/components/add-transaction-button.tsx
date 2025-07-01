@@ -76,6 +76,7 @@ export function AddTransactionButton() {
 
   const paymentMethod = form.watch("paymentMethod");
   const transactionType = form.watch("type");
+  const saveAsRecurring = form.watch("saveAsRecurring");
 
   useEffect(() => {
     if (paymentMethod === 'credit_card') {
@@ -89,10 +90,17 @@ export function AddTransactionButton() {
     }
   }, [paymentMethod, form, cards]);
 
+  useEffect(() => {
+    if (saveAsRecurring) {
+        form.setValue('installments', 1);
+    }
+  }, [saveAsRecurring, form]);
+
 
   const onSubmit = async (data: TransactionFormValues) => {
     setIsSaving(true);
     try {
+      // For recurring expenses, the amount is the monthly charge (the installment value).
       if (data.saveAsRecurring && data.type === 'saida') {
         const recurringPayload: Omit<RecurringTransaction, 'id' | 'userId'> = {
           description: data.description,
@@ -108,10 +116,15 @@ export function AddTransactionButton() {
 
         await addRecurringTransaction(recurringPayload);
       }
+      
+      // For the transaction itself, the amount is the total purchase value.
+      const totalAmount = data.paymentMethod === 'credit_card' && data.installments
+          ? data.amount * data.installments
+          : data.amount;
 
       const transactionPayload: Omit<Transaction, 'id'> = {
           description: data.description,
-          amount: data.amount,
+          amount: totalAmount,
           date: data.date,
           category: data.category,
           type: data.type,
@@ -259,7 +272,7 @@ export function AddTransactionButton() {
                                     <FormField control={form.control} name="installments" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Número de Parcelas</FormLabel>
-                                            <FormControl><Input type="number" placeholder="1" {...field} /></FormControl>
+                                            <FormControl><Input type="number" placeholder="1" {...field} disabled={saveAsRecurring} /></FormControl>
                                         </FormItem>
                                     )} />
                                 </>
@@ -269,7 +282,7 @@ export function AddTransactionButton() {
                                 <FormItem><FormLabel>Descrição</FormLabel><FormControl><Input placeholder="Ex: Salário, Aluguel" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="amount" render={({ field }) => (
-                                <FormItem><FormLabel>{paymentMethod === 'credit_card' ? 'Valor da Compra' : 'Valor'}</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>{paymentMethod === 'credit_card' ? 'Valor da Parcela' : 'Valor'}</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="category" render={({ field }) => (
                                 <FormItem><FormLabel>Categoria</FormLabel><FormControl><Input placeholder="Ex: Renda, Moradia" {...field} /></FormControl><FormMessage /></FormItem>
