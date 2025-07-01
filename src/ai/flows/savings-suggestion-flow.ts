@@ -37,7 +37,7 @@ const CreditCardSchema = z.object({
 });
 
 
-export const SavingsSuggestionInputSchema = z.object({
+const SavingsSuggestionInputSchema = z.object({
   transactions: z.array(TransactionSchema).describe("List of user's transactions for the last period."),
   loans: z.array(LoanSchema).describe("List of user's active loans."),
   recurringTransactions: z.array(RecurringTransactionSchema).describe("List of user's fixed monthly expenses."),
@@ -45,7 +45,7 @@ export const SavingsSuggestionInputSchema = z.object({
 });
 export type SavingsSuggestionInput = z.infer<typeof SavingsSuggestionInputSchema>;
 
-export const SavingsSuggestionOutputSchema = z.object({
+const SavingsSuggestionOutputSchema = z.object({
   suggestion: z.string().describe('The full savings suggestion in Markdown format. It should include an analysis of spending, positive points, areas for improvement, and a list of actionable tips.'),
 });
 export type SavingsSuggestionOutput = z.infer<typeof SavingsSuggestionOutputSchema>;
