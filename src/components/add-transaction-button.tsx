@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -25,6 +25,7 @@ import { readReceipt } from "@/ai/flows/read-receipt-flow";
 import { Switch } from "@/components/ui/switch";
 import { useRecurringTransactions } from "@/hooks/use-recurring-transactions";
 import type { RecurringTransaction } from "@/services/recurring-transactions-service";
+import { Combobox } from "@/components/ui/combobox";
 
 
 const transactionSchema = z.object({
@@ -55,10 +56,19 @@ export function AddTransactionButton() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeTab, setActiveTab] = useState("manual");
   
-  const { addTransaction } = useTransactions();
+  const { transactions, addTransaction } = useTransactions();
   const { addRecurringTransaction } = useRecurringTransactions();
   const { cards, loading: cardsLoading } = useCreditCards();
   const { toast } = useToast();
+
+  const categories = useMemo(() => {
+    const allCategories = transactions.map(t => t.category);
+    const uniqueCategories = [...new Set(allCategories)].filter(Boolean);
+    return uniqueCategories.map(category => ({
+      value: category,
+      label: category
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [transactions]);
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
@@ -284,9 +294,25 @@ export function AddTransactionButton() {
                             <FormField control={form.control} name="amount" render={({ field }) => (
                                 <FormItem><FormLabel>{paymentMethod === 'credit_card' ? 'Valor da Parcela' : 'Valor'}</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
-                            <FormField control={form.control} name="category" render={({ field }) => (
-                                <FormItem><FormLabel>Categoria</FormLabel><FormControl><Input placeholder="Ex: Renda, Moradia" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
+                            <FormField
+                                control={form.control}
+                                name="category"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Categoria</FormLabel>
+                                        <Combobox
+                                            options={categories}
+                                            value={field.value}
+                                            onChange={(value) => form.setValue('category', value, { shouldValidate: true })}
+                                            placeholder="Selecione ou crie uma categoria"
+                                            searchPlaceholder="Buscar categoria..."
+                                            emptyMessage="Nenhuma categoria encontrada."
+                                            creatable
+                                        />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                             <FormField control={form.control} name="date" render={({ field }) => (
                                 <FormItem className="flex flex-col"><FormLabel>Data da {paymentMethod === 'credit_card' ? 'Compra' : 'Transação'}</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal",!field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP", { locale: ptBR }) : (<span>Escolha uma data</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus locale={ptBR} /></PopoverContent></Popover><FormMessage /></FormItem>
                             )} />
