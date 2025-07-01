@@ -19,6 +19,7 @@ import { AddTransactionButton } from "@/components/add-transaction-button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function TransactionsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -107,7 +108,7 @@ export default function TransactionsPage() {
             <AddTransactionButton />
         </CardHeader>
         <CardContent>
-            <div className="grid gap-4 mb-6 md:grid-cols-2 lg:grid-cols-4 items-end">
+            <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2 lg:grid-cols-4">
               <div className="flex items-center gap-2 lg:col-span-1">
                 <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /><span className="sr-only">Mês Anterior</span></Button>
                 <h2 className="text-lg font-semibold whitespace-nowrap text-center flex-1">{capitalizedDate}</h2>
@@ -140,51 +141,96 @@ export default function TransactionsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead>Categoria</TableHead>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Pagamento</TableHead>
-                        <TableHead className="text-right">Valor</TableHead>
-                        <TableHead className="w-[100px] text-center">Ações</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {loading ? (
-                        <TableRow><TableCell colSpan={6} className="h-24 text-center">Carregando transações...</TableCell></TableRow>
-                    ) : filteredTransactions.length > 0 ? (
-                        filteredTransactions.map((t) => (
-                        <TableRow key={t.id}>
-                            <TableCell className="font-medium">{t.description}</TableCell>
-                            <TableCell><Badge variant="outline">{t.category}</Badge></TableCell>
-                            <TableCell>{format(new Date(t.date), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
-                            <TableCell>
+            
+            {/* Desktop Table */}
+            <div className="hidden md:block">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Descrição</TableHead>
+                            <TableHead>Categoria</TableHead>
+                            <TableHead>Data</TableHead>
+                            <TableHead>Pagamento</TableHead>
+                            <TableHead className="text-right">Valor</TableHead>
+                            <TableHead className="w-[100px] text-center">Ações</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            <TableRow><TableCell colSpan={6} className="h-24 text-center">Carregando transações...</TableCell></TableRow>
+                        ) : filteredTransactions.length > 0 ? (
+                            filteredTransactions.map((t) => (
+                            <TableRow key={t.id}>
+                                <TableCell className="font-medium">{t.description}</TableCell>
+                                <TableCell><Badge variant="outline">{t.category}</Badge></TableCell>
+                                <TableCell>{format(new Date(t.date), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
+                                <TableCell>
+                                    {t.paymentMethod === 'credit_card' ? (
+                                        <Badge variant="outline" className="gap-1.5"><CreditCard className="h-3 w-3"/> {getCardName(t.creditCardId)} {t.installments && t.installments > 1 ? `(${t.installments}x)`: ''}</Badge>
+                                    ) : (
+                                        <Badge variant={t.type === 'entrada' ? 'default' : 'secondary'}>{t.type === 'entrada' ? 'Entrada' : 'Saída'}</Badge>
+                                    )}
+                                </TableCell>
+                                <TableCell className={`text-right font-medium ${t.type === 'entrada' ? 'text-primary' : 'text-destructive'}`}>
+                                    {t.type === 'saida' ? '-' : ''}{t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                    <Button variant="ghost" size="icon" onClick={() => setTransactionToDelete(t)} disabled={isDeleting}><Trash2 className="h-4 w-4" /></Button>
+                                </TableCell>
+                            </TableRow>
+                            ))
+                        ) : (
+                            <TableRow><TableCell colSpan={6} className="h-24 text-center">Nenhuma transação encontrada com os filtros atuais.</TableCell></TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+
+            {/* Mobile Card List */}
+            <div className="md:hidden space-y-4">
+                {loading ? (
+                    <div className="space-y-4 pt-4">
+                        <Skeleton className="h-28 w-full" />
+                        <Skeleton className="h-28 w-full" />
+                        <Skeleton className="h-28 w-full" />
+                    </div>
+                ) : filteredTransactions.length > 0 ? (
+                    filteredTransactions.map(t => (
+                        <div key={t.id} className="rounded-lg border p-4 flex flex-col gap-2">
+                            <div className="flex justify-between items-start">
+                                <span className="font-medium pr-2 break-all">{t.description}</span>
+                                <span className={`font-medium whitespace-nowrap ${t.type === 'entrada' ? 'text-primary' : 'text-destructive'}`}>
+                                    {t.type === 'saida' ? '-' : ''}{t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm text-muted-foreground">
+                                <span><Badge variant="outline">{t.category}</Badge></span>
+                                <span>{format(new Date(t.date), "dd/MM/yyyy", { locale: ptBR })}</span>
+                            </div>
+                            <div className="flex justify-between items-center mt-2">
                                 {t.paymentMethod === 'credit_card' ? (
                                     <Badge variant="outline" className="gap-1.5"><CreditCard className="h-3 w-3"/> {getCardName(t.creditCardId)} {t.installments && t.installments > 1 ? `(${t.installments}x)`: ''}</Badge>
                                 ) : (
                                     <Badge variant={t.type === 'entrada' ? 'default' : 'secondary'}>{t.type === 'entrada' ? 'Entrada' : 'Saída'}</Badge>
                                 )}
-                            </TableCell>
-                            <TableCell className={`text-right font-medium ${t.type === 'entrada' ? 'text-primary' : 'text-destructive'}`}>
-                                {t.type === 'saida' ? '-' : ''}{t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </TableCell>
-                            <TableCell className="text-center">
-                                <Button variant="ghost" size="icon" onClick={() => setTransactionToDelete(t)} disabled={isDeleting}><Trash2 className="h-4 w-4" /></Button>
-                            </TableCell>
-                        </TableRow>
-                        ))
-                    ) : (
-                        <TableRow><TableCell colSpan={6} className="h-24 text-center">Nenhuma transação encontrada com os filtros atuais.</TableCell></TableRow>
-                    )}
-                </TableBody>
-            </Table>
+                                <Button variant="ghost" size="icon" onClick={() => setTransactionToDelete(t)} disabled={isDeleting} className="h-8 w-8">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="text-center py-10 text-muted-foreground">
+                        <p>Nenhuma transação encontrada com os filtros atuais.</p>
+                    </div>
+                )}
+            </div>
+
         </CardContent>
         <CardFooter className="justify-end border-t pt-6">
-            <div className="text-lg font-semibold">
-                Gasto Total ({format(currentMonth, "MMMM", { locale: ptBR })}):
-                <span className="text-destructive ml-2">
+            <div className="text-right text-lg">
+                <span className="text-muted-foreground font-normal text-base">Gasto Total ({format(currentMonth, "MMMM", { locale: ptBR })}): </span>
+                <span className="font-semibold text-destructive ml-2">
                     -{filteredMonthTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
             </div>
