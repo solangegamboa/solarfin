@@ -151,6 +151,40 @@ export default function CreditCardsPage() {
     setCardToDelete(cardId);
   }
 
+  const cardBillTotals = useMemo(() => {
+    const totals = new Map<string, number>();
+    if (transactionsLoading || loading) return totals;
+
+    const today = new Date();
+
+    cards.forEach(card => {
+        let currentMonthBill = 0;
+        const cardTransactions = transactions.filter(
+          (t) => t.paymentMethod === 'credit_card' && t.creditCardId === card.id
+        );
+
+        cardTransactions.forEach((purchase) => {
+            if (!purchase.installments || purchase.installments === 0) return;
+
+            const installmentAmount = purchase.amount / purchase.installments;
+            const purchaseDate = new Date(purchase.date);
+            
+            const firstBillMonthOffset = purchaseDate.getDate() > card.closingDay ? 1 : 0;
+            
+            for (let i = 0; i < purchase.installments; i++) {
+                const installmentBillDate = addMonths(purchaseDate, firstBillMonthOffset + i);
+
+                if (isSameMonth(installmentBillDate, today)) {
+                    currentMonthBill += installmentAmount;
+                }
+            }
+        });
+        totals.set(card.id, currentMonthBill);
+    });
+
+    return totals;
+  }, [cards, transactions, loading, transactionsLoading]);
+
   const { currentBill, futureInstallments, billTotal, dueDate } = useMemo(() => {
     if (!selectedCard) return { currentBill: [], futureInstallments: [], billTotal: 0, dueDate: '' };
 
@@ -323,13 +357,21 @@ export default function CreditCardsPage() {
                         </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={(e) => handleSetDefault(e, card.id)} disabled={card.isDefault}>
-                        <Star className={`h-5 w-5 ${card.isDefault ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={(e) => handleDeleteClick(e, card.id)}>
-                        <Trash2 className="h-5 w-5 text-destructive" />
-                    </Button>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                        <p className="font-semibold text-lg text-destructive">
+                            {(cardBillTotals.get(card.id) ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Fatura atual</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" onClick={(e) => handleSetDefault(e, card.id)} disabled={card.isDefault}>
+                            <Star className={`h-5 w-5 ${card.isDefault ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={(e) => handleDeleteClick(e, card.id)}>
+                            <Trash2 className="h-5 w-5 text-destructive" />
+                        </Button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -358,7 +400,7 @@ export default function CreditCardsPage() {
       </AlertDialog>
 
       <Sheet open={!!selectedCard} onOpenChange={(open) => !open && setSelectedCard(null)}>
-        <SheetContent className="sm:max-w-2xl w-full flex flex-col p-0">
+        <SheetContent className="w-full flex flex-col p-0 sm:max-w-2xl">
           {selectedCard && (
             <>
             <SheetHeader className="p-6 border-b">
