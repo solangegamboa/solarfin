@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -32,7 +33,7 @@ import { LoansProvider } from '@/contexts/loans-context';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { RecurringTransactionsProvider } from '@/contexts/recurring-transactions-context';
 import { AuthProvider } from '@/contexts/auth-context';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
@@ -115,6 +116,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="left" className="sm:max-w-xs">
+                            <SheetTitle className="sr-only">Navegação Principal</SheetTitle>
                             <nav className="grid gap-6 text-lg font-medium">
                                 <Link
                                     href="/dashboard"
