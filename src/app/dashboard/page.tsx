@@ -50,11 +50,15 @@ export default function DashboardPage() {
             .filter(t => t.type === 'entrada' && isSameMonth(new Date(t.date), currentDate))
             .reduce((acc, t) => acc + t.amount, 0);
 
-        // Direct money expenses for the month
+        // Direct money expenses for the month (already paid)
         const moneyExpenses = transactions
             .filter(t => t.type === 'saida' && (t.paymentMethod === 'money' || !t.paymentMethod) && isSameMonth(new Date(t.date), currentDate));
 
-        // Calculate credit card expenses for the month's bill
+        // Gastos do Mês now only reflects what has actually been paid
+        const gastosMes = moneyExpenses.reduce((acc, t) => acc + t.amount, 0);
+        const balancoMes = receitaMes - gastosMes;
+
+        // Calculate credit card bill total for the FORECAST card
         let creditCardBillTotal = 0;
         const creditCardPurchases = transactions.filter(t => t.paymentMethod === 'credit_card');
 
@@ -80,10 +84,8 @@ export default function DashboardPage() {
             }
         });
 
-        const gastosMes = moneyExpenses.reduce((acc, t) => acc + t.amount, 0) + creditCardBillTotal;
-        const balancoMes = receitaMes - gastosMes;
-
         // --- DYNAMIC CHART DATA AND CONFIG GENERATION ---
+        // Chart is now based only on actual money expenses.
         const expensesByCategory = moneyExpenses.reduce((acc, t) => {
             const category = t.category || "Outros";
             if (!acc[category]) {
@@ -92,10 +94,6 @@ export default function DashboardPage() {
             acc[category] += t.amount;
             return acc;
         }, {} as Record<string, number>);
-
-        if (creditCardBillTotal > 0) {
-            expensesByCategory["Cartão de Crédito"] = creditCardBillTotal;
-        }
 
         const availableColors = Array.from({ length: 10 }, (_, i) => `hsl(var(--chart-${i + 1}))`);
 
@@ -133,7 +131,7 @@ export default function DashboardPage() {
             .filter(t => isSameMonth(new Date(t.date), currentDate))
             .slice(0, 5);
         
-        // --- New Forecast Calculations ---
+        // --- Forecast Calculations ---
         const loanInstallmentsTotal = loans.reduce((acc, loan) => {
             const contractDate = new Date(loan.contractDate);
             // Robustness: Check for invalid dates
@@ -194,7 +192,7 @@ export default function DashboardPage() {
                 </Card>
                 <Card>
                     <CardHeader className="pb-2"><CardDescription>Gastos do Mês</CardDescription>{loading ? <Skeleton className="h-10 w-3/4" /> : <CardTitle className="text-4xl">{gastosMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>}</CardHeader>
-                    <CardContent><div className="text-xs text-muted-foreground">Total de saídas e faturas do mês</div></CardContent>
+                    <CardContent><div className="text-xs text-muted-foreground">Total de saídas em dinheiro/débito</div></CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
