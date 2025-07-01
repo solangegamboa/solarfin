@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -223,8 +224,9 @@ export function AddTransactionButton() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-            <Button size="sm" className="gap-1">
-                <PlusCircle className="h-4 w-4" /> Nova Transação
+            <Button size="sm" className="w-9 gap-1 p-0 sm:w-auto sm:px-3">
+                <PlusCircle className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only">Nova Transação</span>
             </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md">

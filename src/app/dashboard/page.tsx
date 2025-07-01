@@ -60,28 +60,28 @@ export default function DashboardPage() {
 
         // Calculate credit card bill total for the FORECAST card
         let creditCardBillTotal = 0;
-        const creditCardPurchases = transactions.filter(t => t.paymentMethod === 'credit_card');
-
-        creditCardPurchases.forEach(purchase => {
-            const card = cards.find(c => c.id === purchase.creditCardId);
-            if (!card || !purchase.installments || purchase.installments === 0) return;
-
-            const purchaseDate = new Date(purchase.date);
-            // Robustness: Check for invalid dates to prevent server-side crashes
-            if (isNaN(purchaseDate.getTime())) {
-                return; 
-            }
-
-            const installmentAmount = purchase.amount / purchase.installments;
-            const firstBillMonthOffset = purchaseDate.getDate() > card.closingDay ? 1 : 0;
-            
-            for (let i = 0; i < purchase.installments; i++) {
-                const installmentBillDate = addMonths(purchaseDate, firstBillMonthOffset + i);
-
-                if (isSameMonth(installmentBillDate, currentDate)) {
-                    creditCardBillTotal += installmentAmount;
+        cards.forEach(card => {
+            const cardTransactions = transactions.filter(
+              (t) => t.paymentMethod === 'credit_card' && t.creditCardId === card.id
+            );
+    
+            cardTransactions.forEach((purchase) => {
+                if (!purchase.installments || purchase.installments === 0) return;
+    
+                const installmentAmount = purchase.amount / purchase.installments;
+                const purchaseDate = new Date(purchase.date);
+                if (isNaN(purchaseDate.getTime())) return;
+                
+                const firstBillMonthOffset = purchaseDate.getDate() > card.closingDay ? 1 : 0;
+                
+                for (let i = 0; i < purchase.installments; i++) {
+                    const installmentBillDate = addMonths(purchaseDate, firstBillMonthOffset + i);
+    
+                    if (isSameMonth(installmentBillDate, currentDate)) {
+                        creditCardBillTotal += installmentAmount;
+                    }
                 }
-            }
+            });
         });
 
         // --- DYNAMIC CHART DATA AND CONFIG GENERATION ---
@@ -174,14 +174,14 @@ export default function DashboardPage() {
     return (
         <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold tracking-tight">{capitalizedDate}</h1>
+                <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{capitalizedDate}</h1>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={handlePreviousMonth} className="h-7 w-7"><ChevronLeft className="h-4 w-4" /><span className="sr-only">Mês Anterior</span></Button>
-                    <Button variant="outline" size="icon" onClick={handleNextMonth} className="h-7 w-7"><ChevronRight className="h-4 w-4" /><span className="sr-only">Próximo Mês</span></Button>
+                    <Button variant="outline" size="icon" onClick={handlePreviousMonth} className="h-9 w-9"><ChevronLeft className="h-4 w-4" /><span className="sr-only">Mês Anterior</span></Button>
+                    <Button variant="outline" size="icon" onClick={handleNextMonth} className="h-9 w-9"><ChevronRight className="h-4 w-4" /><span className="sr-only">Próximo Mês</span></Button>
                     <AddTransactionButton />
                 </div>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <Card>
                     <CardHeader className="pb-2"><CardDescription>Balanço do Mês</CardDescription>{loading ? <Skeleton className="h-10 w-3/4" /> : <CardTitle className="text-4xl">{balancoMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</CardTitle>}</CardHeader>
                     <CardContent><div className="text-xs text-muted-foreground">Receitas menos despesas do mês</div></CardContent>
