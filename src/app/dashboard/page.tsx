@@ -20,16 +20,6 @@ import { useRecurringTransactions } from "@/hooks/use-recurring-transactions";
 import { ChartConfig } from "@/components/ui/chart";
 import { AddTransactionButton } from "@/components/add-transaction-button";
 
-const chartConfig = {
-  value: { label: "Valor" },
-  Alimentação: { label: "Alimentação", color: "hsl(var(--chart-1))" },
-  Moradia: { label: "Moradia", color: "hsl(var(--chart-2))" },
-  Transporte: { label: "Transporte", color: "hsl(var(--chart-3))" },
-  Lazer: { label: "Lazer", color: "hsl(var(--chart-4))" },
-  "Cartão de Crédito": { label: "Cartão de Crédito", color: "hsl(var(--chart-5))" },
-  Outros: { label: "Outros", color: "hsl(var(--chart-5))" },
-} satisfies ChartConfig;
-
 export default function DashboardPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const { transactions, loading: transactionsLoading } = useTransactions();
@@ -48,6 +38,7 @@ export default function DashboardPage() {
         gastosMes,
         recentTransactions,
         chartData,
+        chartConfig,
         topCategory,
         forecastedExpenses,
         creditCardBillTotal,
@@ -94,10 +85,12 @@ export default function DashboardPage() {
         const gastosMes = moneyExpenses.reduce((acc, t) => acc + t.amount, 0) + creditCardBillTotal;
         const balancoMes = receitaMes - gastosMes;
 
-        // Combine money expenses and a summary of credit card expenses for the chart
+        // --- DYNAMIC CHART DATA AND CONFIG GENERATION ---
         const expensesByCategory = moneyExpenses.reduce((acc, t) => {
-            const category = t.category in chartConfig ? t.category : "Outros";
-            if (!acc[category]) acc[category] = 0;
+            const category = t.category || "Outros";
+            if (!acc[category]) {
+                acc[category] = 0;
+            }
             acc[category] += t.amount;
             return acc;
         }, {} as Record<string, number>);
@@ -106,13 +99,37 @@ export default function DashboardPage() {
             expensesByCategory["Cartão de Crédito"] = creditCardBillTotal;
         }
 
-        const chartData = Object.entries(expensesByCategory).map(([category, value]) => ({
-            category,
-            value,
-            fill: (chartConfig[category as keyof typeof chartConfig] as any)?.color || (chartConfig["Outros"] as any).color,
-        }));
-        
-        const topCategory = chartData.length > 0 ? chartData.reduce((top, current) => current.value > top.value ? current : top) : { category: 'Nenhuma', value: 0 };
+        const availableColors = Array.from({ length: 10 }, (_, i) => `hsl(var(--chart-${i + 1}))`);
+
+        const dynamicChartConfig: ChartConfig = {
+            value: { label: "Valor" },
+        };
+
+        const sortedCategories = Object.keys(expensesByCategory).sort(
+            (a, b) => expensesByCategory[b] - expensesByCategory[a]
+        );
+
+        let colorIndex = 0;
+        const chartData = sortedCategories.map((category) => {
+            const color = availableColors[colorIndex % availableColors.length];
+            colorIndex++;
+
+            dynamicChartConfig[category] = {
+                label: category,
+                color: color,
+            };
+            
+            return {
+                category,
+                value: expensesByCategory[category],
+                fill: color,
+            };
+        });
+
+        const topCategory = chartData.length > 0 
+            ? chartData.reduce((top, current) => current.value > top.value ? current : top) 
+            : { category: 'Nenhuma', value: 0 };
+
         
         const recentTransactions = transactions
             .filter(t => isSameMonth(new Date(t.date), currentDate))
@@ -140,6 +157,7 @@ export default function DashboardPage() {
             gastosMes, 
             recentTransactions, 
             chartData, 
+            chartConfig: dynamicChartConfig,
             topCategory,
             forecastedExpenses,
             creditCardBillTotal,
