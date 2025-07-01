@@ -214,6 +214,8 @@ export default function LoansPage() {
               loans.map((loan) => {
                 const paidInstallments = calculatePaidInstallments(loan.contractDate);
                 const progress = Math.min((paidInstallments / loan.totalInstallments) * 100, 100);
+                const totalPaid = loan.installmentAmount * Math.min(paidInstallments, loan.totalInstallments);
+                const totalLoanAmount = loan.installmentAmount * loan.totalInstallments;
 
                 return (
                     <div key={loan.id} className="rounded-lg border p-4 space-y-3">
@@ -237,6 +239,14 @@ export default function LoansPage() {
                                 <span>Parcela {Math.min(paidInstallments, loan.totalInstallments)} de {loan.totalInstallments}</span>
                             </div>
                             <Progress value={progress} />
+                             <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                <span className="font-medium text-primary">
+                                    {totalPaid.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} pagos
+                                </span>
+                                <span className="font-medium">
+                                    Total de {totalLoanAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </span>
+                            </div>
                         </div>
                          <div className="flex justify-end pt-2">
                             <Button size="sm" onClick={() => setLoanToPay(loan)} disabled={progress >= 100}>
