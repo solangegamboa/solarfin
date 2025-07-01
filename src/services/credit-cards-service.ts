@@ -19,12 +19,17 @@ export const getCreditCardsFromFirestore = async (userId: string): Promise<Credi
     const cards: CreditCard[] = [];
     querySnapshot.forEach((doc) => {
         const data = doc.data();
+        // Add a check to ensure essential data is present and valid
+        if (typeof data.name !== 'string' || typeof data.closingDay !== 'number' || typeof data.dueDay !== 'number') {
+            console.warn(`Credit card with id ${doc.id} has missing or invalid data and will be skipped.`);
+            return;
+        }
         cards.push({
             id: doc.id,
             name: data.name,
             closingDay: data.closingDay,
             dueDay: data.dueDay,
-            isDefault: data.isDefault,
+            isDefault: data.isDefault || false, // Ensure isDefault is always a boolean
             userId: data.userId,
         });
     });

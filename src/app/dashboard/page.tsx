@@ -60,23 +60,17 @@ export default function DashboardPage() {
 
         creditCardPurchases.forEach(purchase => {
             const card = cards.find(c => c.id === purchase.creditCardId);
-            if (!card || !purchase.installments) return;
+            if (!card || !purchase.installments || purchase.installments === 0) return;
 
             const installmentAmount = purchase.amount / purchase.installments;
             const purchaseDate = new Date(purchase.date);
-
+            
+            const firstBillMonthOffset = purchaseDate.getDate() > card.closingDay ? 1 : 0;
+            
             for (let i = 0; i < purchase.installments; i++) {
-                const installmentDate = addMonths(purchaseDate, i);
-                
-                let closingDateForInstallment = new Date(installmentDate.getFullYear(), installmentDate.getMonth(), card.closingDay);
+                const installmentBillDate = addMonths(purchaseDate, firstBillMonthOffset + i);
 
-                if(purchaseDate.getDate() > card.closingDay && i === 0) {
-                   closingDateForInstallment = addMonths(closingDateForInstallment, 1);
-                } else if (i > 0) {
-                   closingDateForInstallment = addMonths(new Date(purchaseDate.getFullYear(), purchaseDate.getMonth(), card.closingDay), i);
-                }
-
-                if (isSameMonth(closingDateForInstallment, currentDate)) {
+                if (isSameMonth(installmentBillDate, currentDate)) {
                     creditCardBillTotal += installmentAmount;
                 }
             }
