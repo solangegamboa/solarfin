@@ -2,9 +2,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { format, isSameMonth } from "date-fns";
+import { format, isSameMonth, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Trash2, CreditCard } from "lucide-react";
+import { Trash2, CreditCard, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -27,6 +27,7 @@ export default function TransactionsPage() {
   const [descriptionFilter, setDescriptionFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   
   const { transactions, deleteTransaction, loading } = useTransactions();
   const { cards } = useCreditCards();
@@ -43,6 +44,9 @@ export default function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
+      const monthMatch = isSameMonth(new Date(t.date), currentMonth);
+      if (!monthMatch) return false;
+
       const descriptionMatch = descriptionFilter ? t.description.toLowerCase().includes(descriptionFilter.toLowerCase()) : true;
       const categoryMatch = categoryFilter ? t.category.toLowerCase() === categoryFilter.toLowerCase() : true;
       
@@ -57,12 +61,11 @@ export default function TransactionsPage() {
       
       return descriptionMatch && categoryMatch && paymentMethodMatch;
     });
-  }, [transactions, descriptionFilter, categoryFilter, paymentMethodFilter]);
+  }, [transactions, descriptionFilter, categoryFilter, paymentMethodFilter, currentMonth]);
 
   const filteredMonthTotal = useMemo(() => {
-    const today = new Date();
     return filteredTransactions
-      .filter(t => t.type === 'saida' && isSameMonth(new Date(t.date), today))
+      .filter(t => t.type === 'saida')
       .reduce((acc, t) => acc + t.amount, 0);
   }, [filteredTransactions]);
 
@@ -90,6 +93,9 @@ export default function TransactionsPage() {
 
   const getCardName = (cardId: string | undefined) => cards.find(c => c.id === cardId)?.name || 'N/A';
 
+  const formattedDate = format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
+  const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+
   return (
     <>
       <Card>
@@ -101,14 +107,19 @@ export default function TransactionsPage() {
             <AddTransactionButton />
         </CardHeader>
         <CardContent>
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="grid gap-4 mb-6 md:grid-cols-2 lg:grid-cols-4 items-end">
+              <div className="flex items-center gap-2 lg:col-span-1">
+                <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /><span className="sr-only">Mês Anterior</span></Button>
+                <h2 className="text-lg font-semibold whitespace-nowrap text-center flex-1">{capitalizedDate}</h2>
+                <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="h-8 w-8"><ChevronRight className="h-4 w-4" /><span className="sr-only">Próximo Mês</span></Button>
+              </div>
               <Input
                 placeholder="Filtrar por descrição..."
                 value={descriptionFilter}
                 onChange={(e) => setDescriptionFilter(e.target.value)}
-                className="max-w-sm"
+                className="lg:col-span-1"
               />
-              <div className="max-w-sm w-full">
+              <div className="lg:col-span-1">
                 <Combobox
                     options={categories}
                     value={categoryFilter}
@@ -119,7 +130,7 @@ export default function TransactionsPage() {
                 />
               </div>
               <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-                <SelectTrigger className="w-full md:w-[200px]">
+                <SelectTrigger className="lg:col-span-1">
                   <SelectValue placeholder="Tipo de Pagamento" />
                 </SelectTrigger>
                 <SelectContent>
@@ -151,7 +162,7 @@ export default function TransactionsPage() {
                             <TableCell>{format(new Date(t.date), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
                             <TableCell>
                                 {t.paymentMethod === 'credit_card' ? (
-                                    <Badge variant="secondary" className="gap-1.5"><CreditCard className="h-3 w-3"/> {getCardName(t.creditCardId)} {t.installments && t.installments > 1 ? `(${t.installments}x)`: ''}</Badge>
+                                    <Badge variant="outline" className="gap-1.5"><CreditCard className="h-3 w-3"/> {getCardName(t.creditCardId)} {t.installments && t.installments > 1 ? `(${t.installments}x)`: ''}</Badge>
                                 ) : (
                                     <Badge variant={t.type === 'entrada' ? 'default' : 'secondary'}>{t.type === 'entrada' ? 'Entrada' : 'Saída'}</Badge>
                                 )}
@@ -172,7 +183,7 @@ export default function TransactionsPage() {
         </CardContent>
         <CardFooter className="justify-end border-t pt-6">
             <div className="text-lg font-semibold">
-                Gasto Total (Mês Atual, Filtrado):
+                Gasto Total ({format(currentMonth, "MMMM", { locale: ptBR })}):
                 <span className="text-destructive ml-2">
                     -{filteredMonthTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
