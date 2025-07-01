@@ -5,8 +5,8 @@ import { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { PlusCircle, Trash2, Star, CreditCardIcon, DollarSign } from "lucide-react";
-import { addMonths, isSameMonth, isAfter, format } from "date-fns";
+import { PlusCircle, Trash2, Star, CreditCardIcon, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
+import { addMonths, subMonths, isSameMonth, isAfter, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { useCreditCards } from "@/hooks/use-credit-cards";
@@ -100,6 +100,7 @@ export default function CreditCardsPage() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState<number | string>('');
   const [isPaying, setIsPaying] = useState(false);
+  const [currentBillMonth, setCurrentBillMonth] = useState(new Date());
   
   const { cards, addCard, deleteCard, setDefaultCard, loading } = useCreditCards();
   const { transactions, loading: transactionsLoading, addTransaction } = useTransactions();
@@ -109,6 +110,12 @@ export default function CreditCardsPage() {
     resolver: zodResolver(cardSchema),
     defaultValues: defaultFormValues,
   });
+
+  useEffect(() => {
+    if (selectedCard) {
+      setCurrentBillMonth(new Date());
+    }
+  }, [selectedCard]);
 
   const onSubmit = async (data: CardFormValues) => {
     setIsSaving(true);
@@ -194,7 +201,7 @@ export default function CreditCardsPage() {
 
     const bill: BillEntry[] = [];
     const future: FutureInstallmentEntry[] = [];
-    const today = new Date();
+    const billDateReference = currentBillMonth;
 
     cardTransactions.forEach((purchase) => {
         if (!purchase.installments || purchase.installments === 0) return;
@@ -208,7 +215,7 @@ export default function CreditCardsPage() {
             const installmentNumber = i + 1;
             const installmentBillDate = addMonths(purchaseDate, firstBillMonthOffset + i);
 
-            if (isSameMonth(installmentBillDate, today)) {
+            if (isSameMonth(installmentBillDate, billDateReference)) {
                 bill.push({
                     description: purchase.description,
                     date: purchaseDate,
@@ -216,7 +223,7 @@ export default function CreditCardsPage() {
                     amount: installmentAmount,
                 });
             } 
-            else if (isAfter(installmentBillDate, today)) {
+            else if (isAfter(installmentBillDate, billDateReference)) {
                 future.push({
                     description: purchase.description,
                     billDate: installmentBillDate,
@@ -231,7 +238,7 @@ export default function CreditCardsPage() {
 
     future.sort((a, b) => a.billDate.getTime() - b.billDate.getTime());
 
-    const closingDate = new Date(today.getFullYear(), today.getMonth(), selectedCard.closingDay);
+    const closingDate = new Date(billDateReference.getFullYear(), billDateReference.getMonth(), selectedCard.closingDay);
     let due = new Date(closingDate.getFullYear(), closingDate.getMonth(), selectedCard.dueDay);
     if (selectedCard.dueDay <= selectedCard.closingDay) {
         due = addMonths(due, 1);
@@ -240,7 +247,7 @@ export default function CreditCardsPage() {
 
     return { currentBill: bill, futureInstallments: future, billTotal: calculatedBillTotal, dueDate: formattedDueDate };
 
-  }, [selectedCard, transactions]);
+  }, [selectedCard, transactions, currentBillMonth]);
 
   useEffect(() => {
     if (selectedCard && billTotal && isPaymentDialogOpen) {
@@ -265,7 +272,7 @@ export default function CreditCardsPage() {
     setIsPaying(true);
     try {
         const transactionPayload = {
-            description: `Pagamento fatura ${selectedCard.name}`,
+            description: `Pagamento fatura ${selectedCard.name} (${format(currentBillMonth, "MMMM/yy", { locale: ptBR })})`,
             amount: numericPaymentAmount,
             date: new Date(),
             category: "Fatura do Cartão",
@@ -404,15 +411,22 @@ export default function CreditCardsPage() {
           {selectedCard && (
             <>
             <SheetHeader className="p-6 border-b">
-                <SheetTitle>Detalhes do Cartão: {selectedCard.name}</SheetTitle>
+                <div className="flex justify-between items-center">
+                    <SheetTitle>Detalhes: {selectedCard.name}</SheetTitle>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" onClick={() => setCurrentBillMonth(subMonths(currentBillMonth, 1))} className="h-7 w-7"><ChevronLeft className="h-4 w-4" /></Button>
+                        <span className="text-sm font-medium w-28 text-center capitalize">{format(currentBillMonth, "MMMM/yy", { locale: ptBR })}</span>
+                        <Button variant="outline" size="icon" onClick={() => setCurrentBillMonth(addMonths(currentBillMonth, 1))} className="h-7 w-7"><ChevronRight className="h-4 w-4" /></Button>
+                    </div>
+                </div>
                 <SheetDescription>
-                    Fatura atual com vencimento em {dueDate} no valor de <span className="font-semibold text-foreground">{billTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>.
+                    Vencimento em {dueDate} &bull; Total da fatura: <span className="font-semibold text-foreground">{billTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </SheetDescription>
             </SheetHeader>
             <ScrollArea className="flex-1">
               <div className="p-6 space-y-6">
                   <div>
-                    <h3 className="text-lg font-medium mb-2">Fatura Atual ({format(new Date(), "MMMM", { locale: ptBR })})</h3>
+                    <h3 className="text-lg font-medium mb-2">Lançamentos na Fatura</h3>
                     <div className="rounded-lg border">
                         <Table>
                           <TableHeader>
@@ -435,7 +449,7 @@ export default function CreditCardsPage() {
                                   </TableRow>
                               ))
                               ) : (
-                              <TableRow><TableCell colSpan={4} className="h-24 text-center">Nenhuma despesa na fatura atual.</TableCell></TableRow>
+                              <TableRow><TableCell colSpan={4} className="h-24 text-center">Nenhuma despesa nesta fatura.</TableCell></TableRow>
                               )}
                           </TableBody>
                         </Table>
