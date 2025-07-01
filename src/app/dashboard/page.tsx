@@ -62,9 +62,13 @@ export default function DashboardPage() {
             const card = cards.find(c => c.id === purchase.creditCardId);
             if (!card || !purchase.installments || purchase.installments === 0) return;
 
-            const installmentAmount = purchase.amount / purchase.installments;
             const purchaseDate = new Date(purchase.date);
-            
+            // Robustness: Check for invalid dates to prevent server-side crashes
+            if (isNaN(purchaseDate.getTime())) {
+                return; 
+            }
+
+            const installmentAmount = purchase.amount / purchase.installments;
             const firstBillMonthOffset = purchaseDate.getDate() > card.closingDay ? 1 : 0;
             
             for (let i = 0; i < purchase.installments; i++) {
@@ -131,7 +135,12 @@ export default function DashboardPage() {
         
         // --- New Forecast Calculations ---
         const loanInstallmentsTotal = loans.reduce((acc, loan) => {
-            const paidInstallments = differenceInMonths(currentDate, new Date(loan.contractDate)) + 1;
+            const contractDate = new Date(loan.contractDate);
+            // Robustness: Check for invalid dates
+            if (isNaN(contractDate.getTime())) {
+                return acc;
+            }
+            const paidInstallments = differenceInMonths(currentDate, contractDate) + 1;
             if (paidInstallments > 0 && paidInstallments <= loan.totalInstallments) {
                 return acc + loan.installmentAmount;
             }
