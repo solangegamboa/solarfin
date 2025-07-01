@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   Sun,
@@ -30,8 +30,9 @@ import { CreditCardsProvider } from '@/contexts/credit-cards-context';
 import { LoansProvider } from '@/contexts/loans-context';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { RecurringTransactionsProvider } from '@/contexts/recurring-transactions-context';
+import { AuthProvider } from '@/contexts/auth-context';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
 
@@ -115,10 +116,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 }
 
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+        <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </AuthProvider>
+  );
+}
+
+
 const NavItem = ({ href, icon: Icon, label }: { href: string; icon: React.ElementType; label: string }) => {
-    const router = useRouter();
-    // This is a simple way to check for active route. For more complex scenarios, you might use usePathname hook.
-    const isActive = typeof window !== 'undefined' ? window.location.pathname === href : false;
+    const pathname = usePathname();
+    const isActive = pathname === href;
 
     return(
         <Tooltip>
