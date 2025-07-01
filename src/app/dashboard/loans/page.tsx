@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
 
 const loanSchema = z.object({
   institutionName: z.string().min(2, "O nome da instituição é obrigatório."),
@@ -40,6 +41,7 @@ export default function LoansPage() {
   const [loanToDelete, setLoanToDelete] = useState<string | null>(null);
   const [loanToPay, setLoanToPay] = useState<Loan | null>(null);
   const [isPaying, setIsPaying] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState<number | string>('');
 
   const { loans, addLoan, deleteLoan, loading } = useLoans();
   const { addTransaction } = useTransactions();
@@ -54,6 +56,12 @@ export default function LoansPage() {
       contractDate: new Date(),
     },
   });
+
+  useEffect(() => {
+    if (loanToPay) {
+      setPaymentAmount(loanToPay.installmentAmount);
+    }
+  }, [loanToPay]);
 
   const onSubmit = async (data: LoanFormValues) => {
     setIsSaving(true);
@@ -92,7 +100,19 @@ export default function LoansPage() {
   };
 
   const handleRegisterPayment = async () => {
-    if (!loanToPay) return;
+    if (!loanToPay || !paymentAmount) return;
+
+    const numericPaymentAmount = typeof paymentAmount === 'string' ? parseFloat(paymentAmount) : paymentAmount;
+
+    if (isNaN(numericPaymentAmount) || numericPaymentAmount <= 0) {
+        toast({
+            variant: "destructive",
+            title: "Valor Inválido",
+            description: "Por favor, insira um valor de pagamento válido."
+        });
+        return;
+    }
+
     setIsPaying(true);
     try {
         const currentInstallment = calculatePaidInstallments(loanToPay.contractDate);
@@ -110,7 +130,7 @@ export default function LoansPage() {
 
         const transactionPayload = {
             description: `Pagamento Parcela ${currentInstallment} de ${loanToPay.totalInstallments} do empréstimo ${loanToPay.institutionName}`,
-            amount: loanToPay.installmentAmount,
+            amount: numericPaymentAmount,
             date: new Date(),
             category: "Empréstimos",
             type: "saida" as const,
@@ -253,18 +273,29 @@ export default function LoansPage() {
         <AlertDialog open={!!loanToPay} onOpenChange={(open) => !open && setLoanToPay(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                <AlertDialogTitle>Confirmar Pagamento</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Você confirma o pagamento de <span className="font-bold">{loanToPay.installmentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                    {' '}referente à parcela <span className="font-bold">{calculatePaidInstallments(loanToPay.contractDate)}</span> do empréstimo
-                    {' '}<span className="font-bold">{loanToPay.institutionName}</span>? Esta ação irá criar uma nova transação de saída.
-                </AlertDialogDescription>
+                    <AlertDialogTitle>Registrar Pagamento de Empréstimo</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Confirme os detalhes do pagamento para o empréstimo <span className="font-bold">{loanToPay.institutionName}</span>.
+                        Esta ação criará uma nova transação de saída.
+                    </AlertDialogDescription>
                 </AlertDialogHeader>
+                <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                        <Label htmlFor="payment-amount">Valor do Pagamento</Label>
+                        <Input
+                            id="payment-amount"
+                            type="number"
+                            value={paymentAmount}
+                            onChange={(e) => setPaymentAmount(e.target.value)}
+                            placeholder="Valor da Parcela"
+                        />
+                    </div>
+                </div>
                 <AlertDialogFooter>
-                <AlertDialogCancel disabled={isPaying} onClick={() => setLoanToPay(null)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction disabled={isPaying} onClick={handleRegisterPayment}>
-                    {isPaying ? "Registrando..." : "Confirmar"}
-                </AlertDialogAction>
+                    <AlertDialogCancel disabled={isPaying} onClick={() => setLoanToPay(null)}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction disabled={isPaying || !paymentAmount} onClick={handleRegisterPayment}>
+                        {isPaying ? "Registrando..." : "Confirmar Pagamento"}
+                    </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
