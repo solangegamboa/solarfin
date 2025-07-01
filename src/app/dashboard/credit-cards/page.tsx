@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { PlusCircle, Trash2, Star, CreditCardIcon } from "lucide-react";
+import { PlusCircle, Trash2, Star, CreditCardIcon, DollarSign } from "lucide-react";
 import { addMonths, isSameMonth, isAfter, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -45,6 +45,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
+  SheetFooter,
 } from "@/components/ui/sheet";
 import {
   Form,
@@ -60,6 +61,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Label } from "@/components/ui/label";
 
 const cardSchema = z.object({
   name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
@@ -95,9 +97,12 @@ export default function CreditCardsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
   const [selectedCard, setSelectedCard] = useState<CreditCard | null>(null);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState<number | string>('');
+  const [isPaying, setIsPaying] = useState(false);
   
   const { cards, addCard, deleteCard, setDefaultCard, loading } = useCreditCards();
-  const { transactions, loading: transactionsLoading } = useTransactions();
+  const { transactions, loading: transactionsLoading, addTransaction } = useTransactions();
   const { toast } = useToast();
 
   const form = useForm<CardFormValues>({
@@ -202,6 +207,47 @@ export default function CreditCardsPage() {
     return { currentBill: bill, futureInstallments: future, billTotal: calculatedBillTotal, dueDate: formattedDueDate };
 
   }, [selectedCard, transactions]);
+
+  useEffect(() => {
+    if (selectedCard && billTotal && isPaymentDialogOpen) {
+        setPaymentAmount(billTotal);
+    }
+  }, [selectedCard, billTotal, isPaymentDialogOpen]);
+
+  const handleRegisterPayment = async () => {
+    if (!selectedCard || !paymentAmount) return;
+
+    const numericPaymentAmount = typeof paymentAmount === 'string' ? parseFloat(paymentAmount.toString().replace(",", ".")) : paymentAmount;
+
+    if (isNaN(numericPaymentAmount) || numericPaymentAmount <= 0) {
+        toast({
+            variant: "destructive",
+            title: "Valor Inválido",
+            description: "Por favor, insira um valor de pagamento válido."
+        });
+        return;
+    }
+
+    setIsPaying(true);
+    try {
+        const transactionPayload = {
+            description: `Pagamento fatura ${selectedCard.name}`,
+            amount: numericPaymentAmount,
+            date: new Date(),
+            category: "Fatura do Cartão",
+            type: "saida" as const,
+            paymentMethod: "money" as const,
+        };
+        await addTransaction(transactionPayload);
+        toast({ title: "Pagamento Registrado", description: "A transação de pagamento da fatura foi adicionada." });
+        setIsPaymentDialogOpen(false);
+    } catch (error) {
+        console.error("Failed to register payment:", error);
+        toast({ variant: "destructive", title: "Erro ao Registrar", description: "Não foi possível registrar o pagamento." });
+    } finally {
+        setIsPaying(false);
+    }
+  };
 
   return (
     <>
@@ -385,10 +431,43 @@ export default function CreditCardsPage() {
                   </div>
               </div>
             </ScrollArea>
+            <SheetFooter className="p-6 mt-auto border-t">
+                <Button onClick={() => setIsPaymentDialogOpen(true)} disabled={billTotal <= 0 || transactionsLoading}>
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Registrar Pagamento de Fatura
+                </Button>
+            </SheetFooter>
             </>
           )}
         </SheetContent>
       </Sheet>
+
+       <AlertDialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Registrar Pagamento de Fatura</AlertDialogTitle>
+            <AlertDialogDescription>
+                Confirme o valor pago para a fatura do cartão <span className="font-bold">{selectedCard?.name}</span>. Uma transação de saída será criada.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="py-2 space-y-2">
+                <Label htmlFor="payment-amount">Valor Pago</Label>
+                <Input
+                    id="payment-amount"
+                    type="number"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    placeholder="Valor da Fatura"
+                />
+            </div>
+            <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPaying} onClick={() => setIsPaymentDialogOpen(false)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={isPaying || !paymentAmount} onClick={handleRegisterPayment}>
+                {isPaying ? "Registrando..." : "Confirmar Pagamento"}
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
